@@ -1,4 +1,6 @@
 .env.local
 outputs/
 node_modules/
-agents.md
+agents.md.node/ 
+node_modules/ 
+.env.local 
