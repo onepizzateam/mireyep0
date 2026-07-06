@@ -28,3 +28,25 @@ npm run dev
 ```
 
 The frontend serves a Mapbox choropleth and a side panel at `http://localhost:3000`.
+
+Phase 1 → 3 developer notes
+- Fetch tracts (robust):
+
+```bash
+# Phoenix
+node scripts/fetch_tracts_robust.js "Phoenix, AZ"
+# Baltimore
+node scripts/fetch_tracts_robust.js "Baltimore, MD"
+```
+
+- Run scoring (uses `data/tracts/<city>.geojson` when present, otherwise grid fallback):
+
+```bash
+npm run score
+```
+
+- Fetch demo cities (both Phoenix and Baltimore):
+
+```bash
+npm run fetch-demos
+```

@@ -22,37 +22,76 @@ export default function Home() {
       map.on('load', () => {
         fetch('/data/tracts_with_scores.geojson').then(r=>r.json()).then(geo=>{
           map.addSource('tracts', { type: 'geojson', data: geo });
-          map.addLayer({
-            id: 'tracts-circle',
-            type: 'circle',
-            source: 'tracts',
-            paint: {
-              'circle-radius': 8,
-              'circle-color': [
-                'interpolate', ['linear'], ['get','heat_score'],
-                0, '#2DC4B2',
-                0.4, '#FFEDA0',
-                0.7, '#FF6B6B',
-                1, '#800026'
-              ],
-              'circle-stroke-width': 1,
-              'circle-stroke-color': '#222'
-            }
-          });
 
-          map.on('click', 'tracts-circle', (e) => {
-            const f = e.features[0];
-            const coords = f.geometry.coordinates;
-            const lat = coords[1], lng = coords[0];
-            setSelected({ lat, lng, props: f.properties });
-            setExplain(null);
-            // call explain API
-            fetch('/api/ask', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ lat, lng, question: 'Explain the main contributors to heat risk at this location.' })
-            }).then(r=>r.json()).then(data=>setExplain(data)).catch(err=>setExplain({ error: String(err) }));
-          });
+          const geomType = (geo.features && geo.features[0] && geo.features[0].geometry && geo.features[0].geometry.type) || 'Point';
+          if (geomType === 'Point' || geomType === 'MultiPoint') {
+            map.addLayer({
+              id: 'tracts-circle',
+              type: 'circle',
+              source: 'tracts',
+              paint: {
+                'circle-radius': 8,
+                'circle-color': [
+                  'interpolate', ['linear'], ['get','heat_score'],
+                  0, '#2DC4B2',
+                  0.4, '#FFEDA0',
+                  0.7, '#FF6B6B',
+                  1, '#800026'
+                ],
+                'circle-stroke-width': 1,
+                'circle-stroke-color': '#222'
+              }
+            });
+
+            map.on('click', 'tracts-circle', (e) => {
+              const f = e.features[0];
+              const coords = f.geometry.coordinates;
+              const lat = coords[1], lng = coords[0];
+              setSelected({ lat, lng, props: f.properties });
+              setExplain({ loading: true });
+              fetch('/api/ask', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ lat, lng, question: 'Explain the main contributors to heat risk at this location.' })
+                }).then(r=>r.json()).then(data=>setExplain(data)).catch(err=>setExplain({ error: String(err) }));
+            });
+
+          } else {
+            // polygons / multipolygons: show fills and use click lngLat for requests
+            map.addLayer({
+              id: 'tracts-fill',
+              type: 'fill',
+              source: 'tracts',
+              paint: {
+                'fill-color': [
+                  'interpolate', ['linear'], ['get','heat_score'],
+                  0, '#2DC4B2',
+                  0.4, '#FFEDA0',
+                  0.7, '#FF6B6B',
+                  1, '#800026'
+                ],
+                'fill-opacity': 0.7
+              }
+            });
+            map.addLayer({
+              id: 'tracts-line',
+              type: 'line',
+              source: 'tracts',
+              paint: { 'line-color': '#222', 'line-width': 1 }
+            });
+
+            map.on('click', 'tracts-fill', (e) => {
+              const f = e.features[0];
+              const lng = e.lngLat.lng, lat = e.lngLat.lat;
+              setSelected({ lat, lng, props: f.properties });
+              setExplain({ loading: true });
+              fetch('/api/ask', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ lat, lng, question: 'Explain the main contributors to heat risk at this location.' })
+              }).then(r=>r.json()).then(data=>setExplain(data)).catch(err=>setExplain({ error: String(err) }));
+            });
+          }
 
         });
       });
@@ -80,10 +119,24 @@ export default function Home() {
           <div>
             <div>Lat: {selected.lat.toFixed(6)}, Lng: {selected.lng.toFixed(6)}</div>
             <div>Score: {Number(selected.props.heat_score).toFixed(2)}</div>
+            {selected.props.recommendation ? <div><strong>Recommendation:</strong> {selected.props.recommendation}</div> : null}
+            {selected.props._mireye ? (
+              <div style={{fontSize:12,color:'#444',marginTop:6}}>
+                <div>Coverage: {Number(selected.props._mireye.coverage_pct || 0).toFixed(0)}%</div>
+                <div>Built fraction: {selected.props._mireye.built_fraction != null ? Number(selected.props._mireye.built_fraction).toFixed(2) : 'n/a'}</div>
+              </div>
+            ) : null}
             <button onClick={()=>{ if (selected) { fetch('/api/ask', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lat:selected.lat,lng:selected.lng,question:'Explain the main contributors to heat risk at this location.'})}).then(r=>r.json()).then(setExplain).catch(e=>setExplain({error:String(e)})) }}}>Explain</button>
-            <pre style={{whiteSpace:'pre-wrap'}}>{explain ? (explain.answer || JSON.stringify(explain,null,2)) : 'No explanation yet'}</pre>
+            <pre style={{whiteSpace:'pre-wrap'}}>{explain ? (explain.loading ? 'Loading explanation...' : (explain.answer || JSON.stringify(explain,null,2))) : 'No explanation yet'}</pre>
           </div>
         ) : <div>Click a point on the map to inspect.</div>}
+        <hr />
+        <h4>Limitations</h4>
+        <div style={{fontSize:12,color:'#666'}}>
+          - `built_fraction` is a derived proxy, not a continuous imperviousness raster.
+          <br />- `days_above_32c_annual_count` is CONUS-only and coarse (~5km).
+          <br />- Census-tract resolution is for triage, not street-level decisions.
+        </div>
       </div>
     </div>
   );
