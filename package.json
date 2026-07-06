@@ -1,0 +1,24 @@
+{
+  "name": "heatpriority",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "fetch-tracts": "node scripts/fetch_phoenix_tracts.js",
+    "verify": "node scripts/verify_mireye_fetch.js",
+    "score": "node scripts/score_phoenix.js",
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "node-fetch": "^3.3.2",
+    "next": "14.0.0",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "mapbox-gl": "^2.13.0",
+    "swr": "^2.2.0"
+  }
+}

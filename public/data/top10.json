@@ -1,0 +1,18 @@
+[
+  {
+    "id": 12,
+    "score": 1,
+    "tier": "High",
+    "climate": 171,
+    "fields": {
+      "tree_canopy_pct": 0,
+      "land_use_class": "Developed",
+      "lcms_class": "Barren or Impervious",
+      "ndvi_change_5y": -0.1753309816122055,
+      "slope_degrees": 1.703782320022583,
+      "surface_water_permanence_pct": 0,
+      "coast_distance_m": 468027.1055310404,
+      "soil_drainage_class": "Well drained"
+    }
+  }
+]
