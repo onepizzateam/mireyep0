@@ -77,7 +77,7 @@ function computeRateComparison(
 
   let message = "";
   if (position === "below") {
-    message = `Your offered rate is ${Math.abs(gapPercent).toFixed(0)}% below the benchmark range. Over a 30-year lease, this represents $${thirtyYearCost.toLocaleString(undefined, { maximumFractionDigits: 0 })} in foregone income.`;
+    message = `Your offered rate is ${Math.abs(gapPercent).toFixed(0)}% below the benchmark range. Over a 30-year lease, this represents $${thirtyYearCost.toLocaleString('en-US', { maximumFractionDigits: 0 })} in foregone income.`;
   } else if (position === "above") {
     message = `Your offered rate is ${gapPercent.toFixed(0)}% above the benchmark range — an excellent outcome.`;
   } else {

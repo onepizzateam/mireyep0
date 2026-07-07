@@ -59,7 +59,7 @@ export function generateLeverageSummary(
   }
 
   // Permitting friction (if high)
-  if (multiplier > 1.4 && flags.length > 0) {
+  if (multiplier >= 1.4 && flags.length > 0) {
     const topFlag = flags[0];
     sentences.push(
       `${topFlag} — this significantly raises the carrier's cost of finding an alternative site.`

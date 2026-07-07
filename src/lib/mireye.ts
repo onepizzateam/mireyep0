@@ -79,11 +79,11 @@ async function fetchBatch(
       if (fieldName in responseFields) {
         const fieldData = responseFields[fieldName as keyof typeof responseFields] as MireyeFieldValue;
         const value = fieldData?.value ?? null;
-        unwrappedFields[fieldName as keyof MireyeFields] = value;
+        (unwrappedFields[fieldName as keyof MireyeFields] as typeof value) = value;
         if (value === null) nullCount++;
         else valueCount++;
       } else {
-        unwrappedFields[fieldName as keyof MireyeFields] = null;
+        unwrappedFields[fieldName as keyof MireyeFields] = null as unknown as never;
         nullCount++;
       }
     }

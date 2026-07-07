@@ -136,7 +136,6 @@ export default function Home() {
             {/* Leverage Summary */}
             <LeverageSummary
               summary={results.leverageSummary}
-              score={results.score}
             />
 
             {/* Data Gap Banner */}
