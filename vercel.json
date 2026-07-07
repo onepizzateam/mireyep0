@@ -1,12 +1,6 @@
 {
   "framework": "nextjs",
   "buildCommand": "next build",
-  "env": {
-    "MIREYE_API_KEY": {
-      "description": "API key for Mireye data service",
-      "required": true
-    }
-  },
   "rewrites": [
     {
       "source": "/api/:path*",
