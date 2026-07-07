@@ -1,11 +1,4 @@
 {
   "framework": "nextjs",
-  "buildCommand": "next build",
-  "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "/api/:path*",
-      "cache": false
-    }
-  ]
+  "buildCommand": "next build"
 }
