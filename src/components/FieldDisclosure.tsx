@@ -1,0 +1,141 @@
+"use client";
+
+import { useState } from "react";
+import { SiteScore } from "@/lib/types";
+
+interface FieldDisclosureProps {
+  score: SiteScore;
+}
+
+export default function FieldDisclosure({ score }: FieldDisclosureProps) {
+  const [expanded, setExpanded] = useState(false);
+
+  // Collect all top fields from all dimensions
+  const allFields = [
+    ...score.dimensions.coverageNecessity.topFields,
+    ...score.dimensions.subscriberValue.topFields,
+    ...score.dimensions.constructionCost.topFields,
+  ];
+
+  const disclosures = [
+    {
+      title: "FCC Tenancy Caveat",
+      text: "Structure type data is available but actual co-location tenant counts are not — a nearby tower may appear as competition but could already be at structural capacity. Verify with the carrier.",
+      always: true,
+    },
+    {
+      title: "Benchmark Calibration",
+      text: score.dimensions.coverageNecessity.topFields[0]?.explanation
+        ? "Benchmark calibrated to published industry ranges and documented case outcomes — not a transaction database. See methodology."
+        : "",
+      always: true,
+    },
+    {
+      title: "RF Coverage Limitation",
+      text: "This tool assesses site potential for coverage necessity using FCC public data. It cannot access carrier-internal RF coverage models or drive-test data.",
+      always: true,
+    },
+  ];
+
+  return (
+    <div className="w-full max-w-2xl mx-auto bg-white border border-gray-200 rounded-lg shadow-sm">
+      {/* Header */}
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition"
+      >
+        <h3 className="text-sm font-semibold text-gray-700">
+          How We Calculated This
+        </h3>
+        <span className="text-lg font-bold text-gray-600">
+          {expanded ? "−" : "+"}
+        </span>
+      </button>
+
+      {/* Content */}
+      {expanded && (
+        <div className="border-t px-6 py-4 space-y-6">
+          {/* Top Contributing Fields */}
+          {allFields.length > 0 && (
+            <div>
+              <h4 className="text-sm font-semibold text-gray-700 mb-3">
+                Top Contributing Fields
+              </h4>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm border-collapse">
+                  <thead>
+                    <tr className="border-b border-gray-200">
+                      <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600">
+                        Field
+                      </th>
+                      <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600">
+                        Value
+                      </th>
+                      <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600">
+                        Impact
+                      </th>
+                      <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600">
+                        Explanation
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {allFields.map((field, idx) => (
+                      <tr key={idx} className="border-b border-gray-100">
+                        <td className="py-3 px-3 text-xs font-mono text-gray-700">
+                          {field.fieldName}
+                        </td>
+                        <td className="py-3 px-3 text-xs text-gray-600">
+                          {field.value === null
+                            ? "—"
+                            : typeof field.value === "boolean"
+                              ? field.value
+                                ? "Yes"
+                                : "No"
+                              : String(field.value).slice(0, 50)}
+                        </td>
+                        <td className="py-3 px-3">
+                          <span
+                            className={`text-xs font-semibold px-2 py-1 rounded ${
+                              field.impact === "high"
+                                ? "bg-red-100 text-red-800"
+                                : field.impact === "medium"
+                                  ? "bg-amber-100 text-amber-800"
+                                  : "bg-gray-100 text-gray-800"
+                            }`}
+                          >
+                            {field.impact}
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-xs text-gray-600">
+                          {field.explanation}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Methodology Notes */}
+          <div className="space-y-4 border-t pt-4">
+            <h4 className="text-sm font-semibold text-gray-700">
+              Methodology Notes
+            </h4>
+            {disclosures.map((disclosure, idx) => (
+              <div key={idx} className="bg-gray-50 p-4 rounded">
+                <p className="text-xs font-semibold text-gray-700 mb-2">
+                  {disclosure.title}
+                </p>
+                <p className="text-xs text-gray-600 leading-relaxed">
+                  {disclosure.text}
+                </p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

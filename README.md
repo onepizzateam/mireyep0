@@ -1,52 +1,36 @@
-HeatPriority — Phase 0
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-This repo contains Phase 0 artifacts for the HeatPriority Mireye take-home.
+## Getting Started
 
-Quick commands:
-
-- Fetch Phoenix tracts (Maricopa county):
+First, run the development server:
 
 ```bash
-node scripts/fetch_phoenix_tracts.js
-```
-
-- Verify Mireye `/v1/fetch` for Phoenix:
-
-```bash
-node scripts/verify_mireye_fetch.js
-```
-
-Notes:
-- Place your `MIREYE_API_TOKEN` in `.env.local` (or export it in your shell) before running `verify`.
-- Outputs are written to `outputs/` and tract GeoJSON to `data/tracts/`.
-
-Run the local frontend (Phase 1 UI):
-
-```bash
-npm install
 npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
 ```
 
-The frontend serves a Mapbox choropleth and a side panel at `http://localhost:3000`.
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-Phase 1 → 3 developer notes
-- Fetch tracts (robust):
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-```bash
-# Phoenix
-node scripts/fetch_tracts_robust.js "Phoenix, AZ"
-# Baltimore
-node scripts/fetch_tracts_robust.js "Baltimore, MD"
-```
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-- Run scoring (uses `data/tracts/<city>.geojson` when present, otherwise grid fallback):
+## Learn More
 
-```bash
-npm run score
-```
+To learn more about Next.js, take a look at the following resources:
 
-- Fetch demo cities (both Phoenix and Baltimore):
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
-```bash
-npm run fetch-demos
-```
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+
+## Deploy on Vercel
+
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
