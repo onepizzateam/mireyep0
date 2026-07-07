@@ -20,7 +20,6 @@ export function generateLeverageSummary(
   // Extract key metrics
   const dim1 = siteScore.dimensions.coverageNecessity.raw;
   const dim2 = siteScore.dimensions.subscriberValue.raw;
-  const dim3 = siteScore.dimensions.constructionCost.raw;
   const multiplier = siteScore.multiplier;
   const final = siteScore.final;
   const flags = siteScore.permittingFriction.flags;

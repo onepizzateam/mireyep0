@@ -4,10 +4,10 @@ import { SiteScore } from "@/lib/types";
 
 interface LeverageSummaryProps {
   summary: string[];
-  score: SiteScore;
+  _score?: SiteScore;
 }
 
-export default function LeverageSummary({ summary, score }: LeverageSummaryProps) {
+export default function LeverageSummary({ summary }: LeverageSummaryProps) {
   return (
     <div
       className="w-full max-w-2xl mx-auto p-6 space-y-3"

@@ -3,7 +3,6 @@
 import { useState, FormEvent, useRef, useEffect } from "react";
 import { ScoreRequest } from "@/lib/types";
 import MapPin from "./MapPin";
-import mapboxgl from "mapbox-gl";
 
 const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 
@@ -55,7 +54,11 @@ export default function AddressForm({ onSubmit, isLoading }: AddressFormProps) {
       }
 
       const data = await response.json();
-      const suggestions: GeocodeResult[] = data.features.map((feature: any) => ({
+      interface MapboxFeature {
+        center: [number, number];
+        place_name: string;
+      }
+      const suggestions: GeocodeResult[] = data.features.map((feature: MapboxFeature) => ({
         lat: feature.center[1],
         lng: feature.center[0],
         displayName: feature.place_name,

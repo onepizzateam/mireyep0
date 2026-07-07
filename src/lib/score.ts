@@ -12,7 +12,6 @@ import {
   SiteScore,
   SiteType,
   MireyeFields,
-  DimensionScore,
   FieldContribution,
 } from "./types";
 import { DIMENSION_WEIGHTS, FRICTION_MULTIPLIERS, SITE_TYPE_THRESHOLDS } from "@/constants/weights";
@@ -74,7 +73,7 @@ function scoreDimension1(
   const contributions: Array<{
     field: string;
     score: number;
-    value: any;
+    value: number | string | boolean | null;
     impact: "high" | "medium" | "low";
     direction: "positive" | "negative" | "neutral";
     explanation: string;
@@ -290,7 +289,7 @@ function scoreDimension2(
   const contributions: Array<{
     field: string;
     score: number;
-    value: any;
+    value: number | string | boolean | null;
     impact: "high" | "medium" | "low";
     direction: "positive" | "negative" | "neutral";
     explanation: string;
@@ -433,7 +432,7 @@ function scoreDimension3(
   const contributions: Array<{
     field: string;
     score: number;
-    value: any;
+    value: number | string | boolean | null;
     impact: "high" | "medium" | "low";
     direction: "positive" | "negative" | "neutral";
     explanation: string;

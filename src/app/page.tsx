@@ -151,7 +151,7 @@ export default function Home() {
                 Full report — $49
               </h3>
               <p className="text-xs text-gray-600 font-mono">
-                Field-by-field breakdown, 10-year NPV, buyout fair value, and negotiation talking points derived from your site's highest-impact data points.
+                Field-by-field breakdown, 10-year NPV, buyout fair value, and negotiation talking points derived from your site&apos;s highest-impact data points.
               </p>
               <button
                 disabled

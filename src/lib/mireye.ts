@@ -65,7 +65,10 @@ async function fetchBatch(
     const rawResponse: MireyeResponse = await response.json();
 
     // Fields are nested under rawResponse.fields, not at the top level
-    const responseFields = (rawResponse as any).fields ?? {};
+    interface MireyeResponseWithFields extends Record<string, unknown> {
+      fields?: Record<string, MireyeFieldValue>;
+    }
+    const responseFields = (rawResponse as MireyeResponseWithFields).fields ?? {};
 
     // Unwrap the value envelope from each field in this batch
     const unwrappedFields: Partial<MireyeFields> = {};
@@ -74,8 +77,8 @@ async function fetchBatch(
 
     for (const fieldName of fields) {
       if (fieldName in responseFields) {
-        const fieldData = (responseFields as any)[fieldName] as MireyeFieldValue;
-        const value = (fieldData as any)?.value ?? null;
+        const fieldData = responseFields[fieldName as keyof typeof responseFields] as MireyeFieldValue;
+        const value = fieldData?.value ?? null;
         unwrappedFields[fieldName as keyof MireyeFields] = value;
         if (value === null) nullCount++;
         else valueCount++;
@@ -95,7 +98,7 @@ async function fetchBatch(
       );
 
       if ("error" in rawResponse) {
-        console.log(`  ⚠️  Response has 'error' field: ${(rawResponse as any).error}`);
+        console.log(`  ⚠️  Response has 'error' field: ${(rawResponse as MireyeResponseWithFields).error}`);
       }
 
       const responseFieldKeys = Object.keys(responseFields).slice(0, 10);
@@ -103,8 +106,9 @@ async function fetchBatch(
         `  Response field keys: ${responseFieldKeys.join(", ")}${fieldsInResponse > 10 ? "..." : ""}`
       );
 
-      if ((rawResponse as any).partial_failures?.length) {
-        console.log(`  ⚠️  Partial failures: ${((rawResponse as any).partial_failures as any[]).map((f: any) => f.field).join(", ")}`);
+      const partialFailures = (rawResponse as Record<string, unknown>).partial_failures;
+      if (Array.isArray(partialFailures) && partialFailures.length) {
+        console.log(`  ⚠️  Partial failures: ${partialFailures.map((f: Record<string, unknown>) => f.field).join(", ")}`);
       }
     }
 

@@ -8,7 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { geocodeAddress } from "@/lib/geocode";
 import { fetchMireyeFields } from "@/lib/mireye";
 import { computeSiteScore } from "@/lib/score";
-import { computeBenchmarkRange, getBenchmarkMidpoint } from "@/lib/benchmark";
+import { computeBenchmarkRange } from "@/lib/benchmark";
 import { generateLeverageSummary } from "@/lib/leverage";
 import {
   ScoreRequest,
@@ -215,8 +215,6 @@ export async function POST(request: NextRequest): Promise<NextResponse<ScoreResp
       );
     }
 
-    const processingMs = Date.now() - startTime;
-
     const response: ScoreResponse = {
       ok: true,
       address: input.address,
@@ -230,12 +228,11 @@ export async function POST(request: NextRequest): Promise<NextResponse<ScoreResp
       rateComparison,
       buyoutComparison,
       dataGaps: siteScore.dataGaps,
-      processingMs,
+      processingMs: Date.now() - startTime,
     };
 
     return NextResponse.json(response, { status: 200 });
   } catch (error) {
-    const processingMs = Date.now() - startTime;
 
     let errorMessage = "An unknown error occurred";
     let errorCode: "GEOCODING_FAILED" | "MIREYE_ERROR" | "MIREYE_TIMEOUT" | "INVALID_INPUT" | "UNKNOWN" =
