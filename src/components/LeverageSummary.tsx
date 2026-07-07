@@ -7,31 +7,21 @@ interface LeverageSummaryProps {
   score: SiteScore;
 }
 
-function getLeverageColor(score: number): string {
-  if (score >= 75) return "border-green-600 bg-green-50";
-  if (score >= 50) return "border-amber-600 bg-amber-50";
-  return "border-red-600 bg-red-50";
-}
-
-function getLeverageTextColor(score: number): string {
-  if (score >= 75) return "text-green-800";
-  if (score >= 50) return "text-amber-800";
-  return "text-red-800";
-}
-
 export default function LeverageSummary({ summary, score }: LeverageSummaryProps) {
   return (
     <div
-      className={`w-full max-w-2xl mx-auto border-l-4 rounded-lg p-6 space-y-3 ${getLeverageColor(
-        score.final
-      )}`}
+      className="w-full max-w-2xl mx-auto p-6 space-y-3"
+      style={{
+        backgroundColor: '#FFFFFF',
+        border: '1px solid #E5E5E5',
+        borderLeft: '4px solid #FF6600',
+        borderRadius: '4px'
+      }}
     >
-      <h3 className={`text-sm font-semibold ${getLeverageTextColor(score.final)}`}>
-        Your Negotiating Position
-      </h3>
+      <h3 className="text-xs font-medium text-gray-600 uppercase">Negotiating Position</h3>
       <div className="space-y-2">
         {summary.map((sentence, idx) => (
-          <p key={idx} className={`text-sm ${getLeverageTextColor(score.final)}`}>
+          <p key={idx} className="text-sm text-gray-700">
             {sentence}
           </p>
         ))}

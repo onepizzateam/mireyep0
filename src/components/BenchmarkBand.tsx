@@ -22,23 +22,23 @@ export default function BenchmarkBand({
   }
 
   return (
-    <div className="w-full max-w-2xl mx-auto bg-white border border-gray-200 rounded-lg p-8 shadow-sm space-y-6">
+    <div className="w-full max-w-2xl mx-auto bg-white border border-gray-200 p-6 space-y-6" style={{borderRadius: '4px'}}>
       <div>
-        <h3 className="text-sm font-semibold text-gray-700 mb-2">Market Benchmark Range</h3>
-        <p className="text-xs text-gray-600 mb-4">{benchmark.siteType.toUpperCase()} · {benchmark.scoreBand === "high" ? "High Leverage" : benchmark.scoreBand === "mid" ? "Moderate Leverage" : "Limited Leverage"}</p>
+        <h3 className="text-xs font-medium text-gray-600 uppercase mb-3">Market Benchmark Range</h3>
+        <p className="text-xs text-gray-500 mb-4 font-mono">{benchmark.siteType.toUpperCase()} · {benchmark.scoreBand === "high" ? "High" : benchmark.scoreBand === "mid" ? "Moderate" : "Limited"} leverage</p>
 
         {/* Visual band */}
-        <div className="relative mb-8">
-          <div className="flex justify-between text-xs font-semibold text-gray-700 mb-2">
+        <div className="relative mb-6">
+          <div className="flex justify-between text-xs font-mono text-gray-700 mb-2">
             <span>${min.toLocaleString()}/mo</span>
             <span>${max.toLocaleString()}/mo</span>
           </div>
 
           {/* Background band */}
-          <div className="relative h-12 bg-gray-100 rounded-lg overflow-hidden border border-gray-300">
-            {/* Green band representing benchmark range */}
-            <div className="h-full bg-emerald-200 border-r-2 border-emerald-600 flex items-center justify-center">
-              <span className="text-xs font-bold text-emerald-800">
+          <div className="relative" style={{height: '32px', backgroundColor: '#F5F5F5', border: '1px solid #E5E5E5'}}>
+            {/* Orange band representing benchmark range */}
+            <div className="h-full flex items-center justify-center" style={{backgroundColor: '#FFF0E6', borderRight: '2px solid #FF6600'}}>
+              <span className="text-xs font-bold font-mono" style={{color: '#FF6600'}}>
                 ${mid.toLocaleString(undefined, { maximumFractionDigits: 0 })}/mo
               </span>
             </div>
@@ -46,13 +46,15 @@ export default function BenchmarkBand({
             {/* Offered rate marker if provided */}
             {offeredPosition !== null && rateComparison && (
               <div
-                className="absolute top-0 h-full w-1 bg-red-600 flex flex-col items-center justify-start pt-1"
+                className="absolute top-0 h-full flex flex-col items-center justify-start pt-1"
                 style={{
                   left: `${offeredPosition * 100}%`,
                   transform: "translateX(-50%)",
+                  width: '2px',
+                  backgroundColor: '#000000'
                 }}
               >
-                <div className="text-xs font-bold text-red-600 bg-white px-2 py-1 rounded border border-red-600 whitespace-nowrap -mt-8">
+                <div className="text-xs font-mono font-bold text-gray-900 bg-white px-2 py-1" style={{border: '1px solid #000000', whiteSpace: 'nowrap', marginTop: '-24px'}}>
                   Offer: ${rateComparison.offeredRate.toLocaleString(undefined, {
                     maximumFractionDigits: 0,
                   })}/mo
@@ -63,23 +65,23 @@ export default function BenchmarkBand({
         </div>
 
         {/* Calibration note */}
-        <p className="text-xs text-gray-600 italic border-t pt-4">
+        <p className="text-xs text-gray-600 border-t pt-4 font-mono">
           {benchmark.calibrationNote}
         </p>
       </div>
 
       {/* Rate comparison if provided */}
       {rateComparison && (
-        <div className="border-t pt-6 space-y-3">
-          <h4 className="text-sm font-semibold text-gray-700">Your Rate Analysis</h4>
-          <div className="bg-gray-50 p-4 rounded space-y-2">
+        <div className="border-t pt-4 space-y-3">
+          <h4 className="text-xs font-medium text-gray-600 uppercase">Your Rate Analysis</h4>
+          <div className="bg-gray-50 p-4 space-y-2" style={{borderRadius: '4px'}}>
             <p
-              className={`text-sm font-medium ${
+              className={`text-sm font-mono font-medium ${
                 rateComparison.position === "below"
-                  ? "text-red-700"
+                  ? "text-gray-900"
                   : rateComparison.position === "above"
-                    ? "text-green-700"
-                    : "text-gray-700"
+                    ? "text-gray-900"
+                    : "text-gray-900"
               }`}
             >
               {rateComparison.position === "below"
@@ -90,7 +92,7 @@ export default function BenchmarkBand({
             </p>
             <p className="text-xs text-gray-600">{rateComparison.message}</p>
             {rateComparison.position === "below" && (
-              <p className="text-xs font-semibold text-red-700 pt-2">
+              <p className="text-xs font-mono font-semibold text-gray-900 pt-2">
                 30-year cost: ${rateComparison.thirtyYearCost.toLocaleString(undefined, {
                   maximumFractionDigits: 0,
                 })}

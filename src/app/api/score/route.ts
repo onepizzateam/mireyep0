@@ -39,12 +39,16 @@ function validateScoreRequest(body: unknown): ScoreRequest {
     typeof obj.buyoutAmount === "number" && obj.buyoutAmount > 0
       ? obj.buyoutAmount
       : undefined;
+  const lat = typeof obj.lat === "number" ? obj.lat : undefined;
+  const lng = typeof obj.lng === "number" ? obj.lng : undefined;
 
   return {
     address,
     carrier,
     offeredRate,
     buyoutAmount,
+    lat,
+    lng,
   };
 }
 
@@ -160,8 +164,19 @@ export async function POST(request: NextRequest): Promise<NextResponse<ScoreResp
     const body = await request.json();
     const input = validateScoreRequest(body);
 
-    // Step 1: Geocode the address
-    const geocoded = await geocodeAddress(input.address);
+    // Step 1: Determine coordinates
+    // If lat/lng provided from frontend map, use them directly
+    // Otherwise, geocode the address
+    let geocoded;
+    if (input.lat !== undefined && input.lng !== undefined) {
+      geocoded = {
+        lat: input.lat,
+        lng: input.lng,
+        displayName: input.address,
+      };
+    } else {
+      geocoded = await geocodeAddress(input.address);
+    }
 
     // Step 2: Fetch Mireye fields
     const mireyeFields = await fetchMireyeFields(geocoded.lat, geocoded.lng);
@@ -227,10 +242,10 @@ export async function POST(request: NextRequest): Promise<NextResponse<ScoreResp
       "UNKNOWN";
 
     if (error instanceof GeocodingFailedError) {
-      errorMessage = `Could not geocode address. Please check the address and try again.`;
+      errorMessage = `Address could not be geocoded. Try a more specific address or use decimal coordinates (lat, lng).`;
       errorCode = "GEOCODING_FAILED";
     } else if (error instanceof MireyeTimeoutError) {
-      errorMessage = `Mireye API request timed out. Please try again in a moment.`;
+      errorMessage = `Site data fetch timed out. Mireye occasionally takes 20–30s for rural coordinates. Try again.`;
       errorCode = "MIREYE_TIMEOUT";
     } else if (error instanceof MireyeError) {
       errorMessage = `Mireye API error. Please try again later.`;

@@ -5,7 +5,7 @@
  * Authentication: Bearer token from MIREYE_API_KEY
  */
 
-import { MireyeFields, MireyeResponse, MireyeTimeoutError, MireyeError } from "./types";
+import { MireyeFields, MireyeResponse, MireyeFieldValue, MireyeTimeoutError, MireyeError } from "./types";
 import {
   MIREYE_FIELDS_BATCH_1,
   MIREYE_FIELDS_BATCH_2,
@@ -65,7 +65,7 @@ async function fetchBatch(
     const rawResponse: MireyeResponse = await response.json();
 
     // Fields are nested under rawResponse.fields, not at the top level
-    const responseFields = rawResponse.fields ?? {};
+    const responseFields = (rawResponse as any).fields ?? {};
 
     // Unwrap the value envelope from each field in this batch
     const unwrappedFields: Partial<MireyeFields> = {};
@@ -74,7 +74,7 @@ async function fetchBatch(
 
     for (const fieldName of fields) {
       if (fieldName in responseFields) {
-        const fieldData = responseFields[fieldName];
+        const fieldData = (responseFields as any)[fieldName] as MireyeFieldValue;
         const value = (fieldData as any)?.value ?? null;
         unwrappedFields[fieldName as keyof MireyeFields] = value;
         if (value === null) nullCount++;
@@ -103,8 +103,8 @@ async function fetchBatch(
         `  Response field keys: ${responseFieldKeys.join(", ")}${fieldsInResponse > 10 ? "..." : ""}`
       );
 
-      if (rawResponse.partial_failures?.length) {
-        console.log(`  ⚠️  Partial failures: ${rawResponse.partial_failures.map((f: any) => f.field).join(", ")}`);
+      if ((rawResponse as any).partial_failures?.length) {
+        console.log(`  ⚠️  Partial failures: ${((rawResponse as any).partial_failures as any[]).map((f: any) => f.field).join(", ")}`);
       }
     }
 

@@ -190,6 +190,8 @@ export interface ScoreRequest {
   carrier?: string; // optional, stored for display only
   offeredRate?: number; // optional, monthly dollars
   buyoutAmount?: number; // optional, lump sum
+  lat?: number; // optional, pre-geocoded latitude from map
+  lng?: number; // optional, pre-geocoded longitude from map
 }
 
 export interface ScoreResponse {

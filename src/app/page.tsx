@@ -45,15 +45,15 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-white">
       {/* Header */}
       <header className="bg-white border-b border-gray-200">
-        <div className="max-w-4xl mx-auto px-4 py-12 sm:px-6 lg:px-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            Find out what your cell tower lease is actually worth.
+        <div className="max-w-4xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+          <h1 className="text-4xl font-bold text-gray-900 mb-1">
+            Cell tower lease valuation.
           </h1>
-          <p className="text-lg text-gray-600">
-            Carriers know exactly what your site is worth. Now you can too.
+          <p className="text-base text-gray-600 font-mono">
+            One address, 60 federal data points, one defensible number.
           </p>
         </div>
       </header>
@@ -62,23 +62,21 @@ export default function Home() {
       <main className="max-w-4xl mx-auto px-4 py-12 sm:px-6 lg:px-8">
         {/* Form Section */}
         <div className="mb-12">
+          <p className="text-sm text-gray-600 font-mono text-center mb-6">Enter an address to run a site valuation.</p>
           <AddressForm onSubmit={handleScoreRequest} isLoading={isLoading} />
         </div>
 
         {/* Error Message */}
         {error && (
-          <div className="mb-8 w-full max-w-2xl mx-auto bg-red-50 border border-red-200 rounded-lg p-4">
-            <p className="text-sm font-semibold text-red-800 mb-1">Error</p>
-            <p className="text-sm text-red-700">{error}</p>
+          <div className="mb-8 w-full max-w-2xl mx-auto bg-white border border-red-300 rounded p-4">
+            <p className="text-sm font-mono text-red-900">{error}</p>
           </div>
         )}
 
         {/* Loading Skeleton */}
         {isLoading && (
-          <div className="space-y-6">
-            <div className="w-full max-w-2xl mx-auto h-32 bg-gray-200 rounded animate-pulse"></div>
-            <div className="w-full max-w-2xl mx-auto h-24 bg-gray-200 rounded animate-pulse"></div>
-            <div className="w-full max-w-2xl mx-auto h-24 bg-gray-200 rounded animate-pulse"></div>
+          <div className="w-full max-w-2xl mx-auto text-center py-8">
+            <p className="text-sm font-mono text-gray-600">Fetching site data...</p>
           </div>
         )}
 
@@ -116,20 +114,19 @@ export default function Home() {
 
             {/* Buyout Comparison */}
             {results.buyoutComparison && (
-              <div className="w-full max-w-2xl mx-auto bg-white border border-gray-200 rounded-lg p-6 space-y-3">
-                <h3 className="text-sm font-semibold text-gray-700">
+              <div className="w-full max-w-2xl mx-auto bg-white border border-gray-200 p-6 space-y-3" style={{borderRadius: '4px'}}>
+                <h3 className="text-xs font-medium text-gray-600 uppercase">
                   Buyout Analysis
                 </h3>
                 <div className="space-y-2">
                   <p className="text-sm text-gray-700">
-                    <strong>Implied Multiple:</strong>{" "}
-                    {results.buyoutComparison.impliedMultiple.toFixed(1)}× annual
-                    rent
+                    <span className="font-mono">Implied Multiple:</span>{" "}
+                    {results.buyoutComparison.impliedMultiple.toFixed(1)}× annual rent
                   </p>
                   <p className="text-sm text-gray-700">
-                    <strong>Fair Value Range:</strong> ${results.buyoutComparison.fairValueMin.toLocaleString(undefined, { maximumFractionDigits: 0 })} – ${results.buyoutComparison.fairValueMax.toLocaleString(undefined, { maximumFractionDigits: 0 })}
+                    <span className="font-mono">Fair Value:</span> ${results.buyoutComparison.fairValueMin.toLocaleString(undefined, { maximumFractionDigits: 0 })} – ${results.buyoutComparison.fairValueMax.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                   </p>
-                  <p className="text-sm text-gray-700 mt-3">
+                  <p className="text-sm text-gray-700 mt-3 font-mono">
                     {results.buyoutComparison.message}
                   </p>
                 </div>
@@ -149,17 +146,16 @@ export default function Home() {
             <FieldDisclosure score={results.score} />
 
             {/* CTA Card */}
-            <div className="w-full max-w-2xl mx-auto bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-lg p-8 text-center space-y-4">
-              <h3 className="text-lg font-bold text-gray-900">
-                Get the Full Report
+            <div className="w-full max-w-2xl mx-auto bg-white border border-gray-200 p-6 text-center space-y-4" style={{borderRadius: '4px'}}>
+              <h3 className="text-sm font-semibold text-gray-900">
+                Full report — $49
               </h3>
-              <p className="text-sm text-gray-700">
-                PDF report with 10-year NPV projections, detailed field analysis,
-                and negotiation talking points — $49 one-time
+              <p className="text-xs text-gray-600 font-mono">
+                Field-by-field breakdown, 10-year NPV, buyout fair value, and negotiation talking points derived from your site's highest-impact data points.
               </p>
               <button
                 disabled
-                className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-semibold py-3 px-8 rounded-lg transition cursor-not-allowed"
+                className="w-full bg-black hover:shadow-md disabled:opacity-60 text-white text-sm font-medium py-2 transition cursor-not-allowed" style={{borderRadius: '4px'}}
                 title="Coming soon"
               >
                 Coming Soon
@@ -170,11 +166,10 @@ export default function Home() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-gray-400 py-8 mt-16">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <p className="text-sm">
-            SignalRent — Built on Mireye. 42 fields. One API call. One negotiation
-            you don't lose.
+      <footer className="bg-white border-t border-gray-200 py-8 mt-16">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+          <p className="text-xs text-gray-600 font-mono text-center">
+            Built on Mireye. Data sourced from FCC ASR, USDA SSURGO, FEMA NFHL, USFWS NWI, and 12 other federal datasets. Not a substitute for professional appraisal.
           </p>
         </div>
       </footer>

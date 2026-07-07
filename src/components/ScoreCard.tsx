@@ -6,62 +6,55 @@ interface ScoreCardProps {
   score: SiteScore;
 }
 
-function getScoreColor(score: number): string {
-  if (score >= 75) return "bg-green-600";
-  if (score >= 50) return "bg-amber-500";
-  return "bg-red-500";
-}
-
-function getScoreLabelColor(score: number): string {
-  if (score >= 75) return "text-green-600";
-  if (score >= 50) return "text-amber-600";
-  return "text-red-600";
-}
-
 export default function ScoreCard({ score }: ScoreCardProps) {
   return (
-    <div className="w-full max-w-2xl mx-auto bg-white border border-gray-200 rounded-lg p-8 shadow-sm space-y-6">
+    <div className="w-full max-w-2xl mx-auto bg-white border border-gray-200 p-6 space-y-6" style={{borderRadius: '4px'}}>
       {/* Main Score */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-baseline justify-between">
         <div>
-          <h3 className="text-sm font-medium text-gray-600">Site Score</h3>
-          <p className={`text-5xl font-bold ${getScoreLabelColor(score.final)}`}>
-            {Math.round(score.final)}
-            <span className="text-2xl text-gray-500"> / 100</span>
-          </p>
+          <h3 className="text-xs font-medium text-gray-600 uppercase mb-2">Site Score</h3>
+          <div className="flex items-baseline gap-1">
+            <p className="text-5xl font-mono font-bold" style={{color: '#FF6600'}}>
+              {Math.round(score.final)}
+            </p>
+            <p className="text-xl font-mono text-gray-400">/100</p>
+          </div>
         </div>
         <div className="flex-1 ml-8">
-          <div className="w-full bg-gray-200 rounded-full h-8">
+          <div className="w-full" style={{height: '3px', backgroundColor: '#E5E5E5'}}>
             <div
-              className={`h-8 rounded-full flex items-center justify-center text-white text-sm font-semibold transition-all ${getScoreColor(
-                score.final
-              )}`}
-              style={{ width: `${Math.min(100, score.final)}%` }}
-            >
-              {Math.round(score.final)}
-            </div>
+              className="transition-all"
+              style={{
+                height: '3px',
+                width: `${Math.min(100, score.final)}%`,
+                backgroundColor: '#FF6600'
+              }}
+            />
           </div>
         </div>
       </div>
 
       {/* Dimension Scores */}
-      <div className="space-y-4 border-t pt-6">
-        <h4 className="text-sm font-semibold text-gray-700">Dimension Breakdown</h4>
+      <div className="space-y-3 border-t pt-4">
+        <h4 className="text-xs font-medium text-gray-600 uppercase">Dimension Breakdown</h4>
 
         {/* Dimension 1 */}
         <div>
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-sm font-medium text-gray-700">
+          <div className="flex justify-between items-center mb-1">
+            <span className="text-xs font-medium text-gray-700">
               {score.dimensions.coverageNecessity.label}
             </span>
-            <span className="text-sm font-semibold text-gray-900">
-              {Math.round(score.dimensions.coverageNecessity.raw)} / 100
+            <span className="text-xs font-mono text-gray-900">
+              {Math.round(score.dimensions.coverageNecessity.raw)}
             </span>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
+          <div className="w-full" style={{height: '2px', backgroundColor: '#E5E5E5'}}>
             <div
-              className="h-2 rounded-full bg-blue-600"
-              style={{ width: `${score.dimensions.coverageNecessity.raw}%` }}
+              style={{
+                height: '2px',
+                width: `${score.dimensions.coverageNecessity.raw}%`,
+                backgroundColor: '#000000'
+              }}
             />
           </div>
           <p className="text-xs text-gray-500 mt-1">
@@ -71,18 +64,21 @@ export default function ScoreCard({ score }: ScoreCardProps) {
 
         {/* Dimension 2 */}
         <div>
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-sm font-medium text-gray-700">
+          <div className="flex justify-between items-center mb-1">
+            <span className="text-xs font-medium text-gray-700">
               {score.dimensions.subscriberValue.label}
             </span>
-            <span className="text-sm font-semibold text-gray-900">
-              {Math.round(score.dimensions.subscriberValue.raw)} / 100
+            <span className="text-xs font-mono text-gray-900">
+              {Math.round(score.dimensions.subscriberValue.raw)}
             </span>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
+          <div className="w-full" style={{height: '2px', backgroundColor: '#E5E5E5'}}>
             <div
-              className="h-2 rounded-full bg-emerald-600"
-              style={{ width: `${score.dimensions.subscriberValue.raw}%` }}
+              style={{
+                height: '2px',
+                width: `${score.dimensions.subscriberValue.raw}%`,
+                backgroundColor: '#000000'
+              }}
             />
           </div>
           <p className="text-xs text-gray-500 mt-1">
@@ -92,18 +88,21 @@ export default function ScoreCard({ score }: ScoreCardProps) {
 
         {/* Dimension 3 */}
         <div>
-          <div className="flex justify-between items-center mb-2">
-            <span className="text-sm font-medium text-gray-700">
+          <div className="flex justify-between items-center mb-1">
+            <span className="text-xs font-medium text-gray-700">
               {score.dimensions.constructionCost.label}
             </span>
-            <span className="text-sm font-semibold text-gray-900">
-              {Math.round(score.dimensions.constructionCost.raw)} / 100
+            <span className="text-xs font-mono text-gray-900">
+              {Math.round(score.dimensions.constructionCost.raw)}
             </span>
           </div>
-          <div className="w-full bg-gray-200 rounded-full h-2">
+          <div className="w-full" style={{height: '2px', backgroundColor: '#E5E5E5'}}>
             <div
-              className="h-2 rounded-full bg-purple-600"
-              style={{ width: `${score.dimensions.constructionCost.raw}%` }}
+              style={{
+                height: '2px',
+                width: `${score.dimensions.constructionCost.raw}%`,
+                backgroundColor: '#000000'
+              }}
             />
           </div>
           <p className="text-xs text-gray-500 mt-1">
@@ -116,34 +115,26 @@ export default function ScoreCard({ score }: ScoreCardProps) {
       <div className="border-t pt-4">
         <div className="flex items-center justify-between">
           <div>
-            <p className="text-sm font-medium text-gray-700">Leverage Multiplier</p>
+            <p className="text-xs font-medium text-gray-600 uppercase">Leverage Multiplier</p>
             <p className="text-xs text-gray-600 mt-1">
-              Permitting friction effect on negotiating position
+              Permitting friction effect
             </p>
           </div>
-          <p
-            className={`text-2xl font-bold ${
-              score.multiplier > 1.2
-                ? "text-green-600"
-                : score.multiplier < 0.9
-                  ? "text-red-600"
-                  : "text-gray-700"
-            }`}
-          >
+          <p className="text-2xl font-mono font-bold text-gray-900">
             {score.multiplier.toFixed(2)}×
           </p>
         </div>
       </div>
 
-      {/* Site Type */}
+      {/* Site Type & Baseline */}
       <div className="border-t pt-4 flex justify-between">
         <div>
-          <p className="text-sm font-medium text-gray-700">Site Type</p>
-          <p className="text-sm text-gray-600 capitalize mt-1">{score.siteType}</p>
+          <p className="text-xs font-medium text-gray-600 uppercase">Site Type</p>
+          <p className="text-sm font-mono text-gray-900 capitalize mt-1">{score.siteType}</p>
         </div>
         <div>
-          <p className="text-sm font-medium text-gray-700">Baseline Score</p>
-          <p className="text-sm text-gray-600 mt-1">{Math.round(score.baseline)} / 100</p>
+          <p className="text-xs font-medium text-gray-600 uppercase">Baseline</p>
+          <p className="text-sm font-mono text-gray-900 mt-1">{Math.round(score.baseline)}/100</p>
         </div>
       </div>
     </div>

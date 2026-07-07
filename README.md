@@ -1,36 +1,88 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SignalRent
 
-## Getting Started
+Cell tower lease valuation. One address, 60 federal data points, one defensible number.
 
-First, run the development server:
+## What is SignalRent?
+
+SignalRent tells US property owners what their cell tower lease is actually worth. Enter an address, get a defensible valuation tied to federal tower siting data, benchmark market ranges, and plain-English negotiating guidance.
+
+**The free valuation includes:**
+- Site Score (0–100) with dimension breakdown
+- Market benchmark range (monthly and annual)
+- Negotiating position analysis
+- Optional rate comparison and buyout analysis
+
+## Quick Deploy
+
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FYOURNAME%2Fsignalrent&env=MIREYE_API_KEY&project-name=signalrent&repository-name=signalrent)
+
+## Environment Setup
+
+### Required: Mireye API Key & Mapbox Token
+
+1. **Mireye API key**: Sign up at [mireye.com](https://mireye.com), get key from project settings
+2. **Mapbox token**: Get a public token from [mapbox.com](https://mapbox.com)
+3. Set both in Vercel: Project Settings → Environment Variables:
+   - `MIREYE_API_KEY` (server-side only)
+   - `NEXT_PUBLIC_MAPBOX_TOKEN` (public, used in browser)
+
+### Local Development
 
 ```bash
+# Clone the repo
+git clone https://github.com/YOURNAME/signalrent.git
+cd signalrent
+
+# Install dependencies
+npm install
+
+# Set environment variables
+cp .env.example .env.local
+# Edit .env.local and add:
+#   MIREYE_API_KEY=your_mireye_key
+#   NEXT_PUBLIC_MAPBOX_TOKEN=your_mapbox_token
+
+# Run dev server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Data Sources
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Benchmark ranges are calibrated to published industry data (Steel in the Air, Vertical Consultants, Tower Genius) and documented negotiated outcomes. Site valuations are derived from:
 
-## Learn More
+- **FCC Antenna Structure Registry** — tower locations and attributes
+- **USDA SSURGO** — soil and bedrock depth
+- **FEMA National Flood Hazard Layer** — floodplain exposure
+- **USFWS National Wetlands Inventory** — wetland status
+- **US Census** — housing density and population
+- **NOAA & USGS** — seismic and lightning risk
 
-To learn more about Next.js, take a look at the following resources:
+Not a substitute for professional appraisal.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Scripts
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npm run dev        # Start development server
+npm run build      # Build for production
+npm start          # Start production server
+npm run lint       # Run ESLint
+npm test           # Run Jest tests
+npm run test:watch # Watch mode for tests
+```
 
-## Deploy on Vercel
+## Technology
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+- **Next.js 16** — App Router, TypeScript
+- **Tailwind CSS** — Utility-first styling
+- **Zod** — Runtime validation
+- **Jest** — Unit tests
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## License
+
+See LICENSE file.
+
+---
+
+Built on Mireye.

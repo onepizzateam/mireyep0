@@ -14,26 +14,22 @@ export default function DataGapBanner({ dataGaps }: DataGapBannerProps) {
   }
 
   return (
-    <div className="w-full max-w-2xl mx-auto bg-amber-50 border-l-4 border-amber-500 rounded p-4 space-y-3">
+    <div className="w-full max-w-2xl mx-auto p-4 space-y-3" style={{backgroundColor: '#FFFBF5', border: '1px solid #E5E5E5', borderRadius: '4px'}}>
       <div
         className="flex items-start justify-between cursor-pointer"
         onClick={() => setExpanded(!expanded)}
       >
         <div className="flex items-start gap-3 flex-1">
-          <span className="text-amber-700 font-bold text-lg mt-1">⚠</span>
+          <span className="text-lg mt-0" style={{color: '#FF6600'}}>⚠</span>
           <div>
-            <p className="text-sm font-semibold text-amber-900">
-              Data limitations
-            </p>
-            <p className="text-sm text-amber-800">
-              {dataGaps.length} field{dataGaps.length !== 1 ? "s" : ""} affecting
-              this score w{dataGaps.length !== 1 ? "ere" : "as"} unavailable or
-              uncertain.
+            <p className="text-xs font-medium text-gray-900 uppercase">Data Limitations</p>
+            <p className="text-xs text-gray-700 mt-1">
+              {dataGaps.length} field{dataGaps.length !== 1 ? "s returned null" : " returned null"} — scores for affected dimensions are estimated from fallback values.
             </p>
           </div>
         </div>
         <button
-          className="text-amber-700 hover:text-amber-900 font-bold text-lg mt-1"
+          className="text-gray-600 hover:text-gray-900 font-bold text-lg mt-0"
           aria-label="Toggle details"
         >
           {expanded ? "−" : "+"}
@@ -41,9 +37,9 @@ export default function DataGapBanner({ dataGaps }: DataGapBannerProps) {
       </div>
 
       {expanded && (
-        <div className="pl-8 border-t border-amber-200 pt-3 space-y-2">
+        <div className="pl-7 border-t border-gray-200 pt-3 space-y-2 text-xs text-gray-700">
           {dataGaps.map((gap, idx) => (
-            <p key={idx} className="text-xs text-amber-800">
+            <p key={idx} className="font-mono">
               • {gap}
             </p>
           ))}
