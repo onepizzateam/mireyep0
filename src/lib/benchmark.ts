@@ -238,12 +238,17 @@ export function computeBenchmarkRange(
   let min = Math.round(adjustedCenter * (1 - spread));
   let max = Math.round(adjustedCenter * (1 + spread));
 
-  // Apply permitting friction multiplier to ceiling only
+  // Apply permitting friction multiplier to ceiling only.
+  // Any friction above the 1.0 baseline (i.e. one or more friction flags fired) must translate
+  // into a visible dollar premium on the ceiling — otherwise the report shows a multiplier and a
+  // list of constraints but never what they did to the price.
   let frictionCeilingBump = 0;
   if (permittingFriction.multiplierRaw >= 1.6) {
     frictionCeilingBump = 0.35;
   } else if (permittingFriction.multiplierRaw >= 1.4) {
     frictionCeilingBump = 0.20;
+  } else if (permittingFriction.multiplierRaw > 1.0) {
+    frictionCeilingBump = 0.10;
   }
 
   if (frictionCeilingBump > 0) {

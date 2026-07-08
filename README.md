@@ -1,10 +1,10 @@
 # SignalRent
 
-Cell tower lease valuation. One address, 60 federal data points, one defensible number.
+Cell tower lease valuation. One address, 60 federal data points, a data-backed estimate and a read on your negotiating leverage.
 
 ## What is SignalRent?
 
-SignalRent tells US property owners what their cell tower lease is actually worth. Enter an address, get a defensible valuation tied to federal tower siting data, benchmark market ranges, and plain-English negotiating guidance.
+SignalRent tells US property owners what their cell tower lease is actually worth. Enter an address, get a data-backed valuation estimate tied to federal tower siting data, benchmark market ranges, and plain-English negotiating guidance.
 
 **The free valuation includes:**
 - Site Score (0–100) with dimension breakdown

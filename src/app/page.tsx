@@ -92,7 +92,7 @@ export default function Home() {
             Cell tower lease valuation.
           </h1>
           <p className="text-base text-gray-600 font-mono">
-            One address, 60 federal data points, one defensible number.
+            One address, 60 federal data points, a data-backed estimate and a read on your negotiating leverage.
           </p>
         </div>
       </header>

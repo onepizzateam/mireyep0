@@ -70,6 +70,34 @@ export default function BenchmarkBand({
         </p>
       </div>
 
+      {/* How this range was calculated — itemized price breakdown */}
+      {benchmark.priceBreakdown && benchmark.priceBreakdown.length > 0 && (
+        <div className="border-t pt-4 space-y-3">
+          <h4 className="text-xs font-medium text-gray-600 uppercase">How this range was calculated</h4>
+          <div className="bg-gray-50 p-4 space-y-2" style={{ borderRadius: "4px" }}>
+            <div className="flex justify-between text-xs font-mono text-gray-700">
+              <span>Base value ({benchmark.siteType} · {benchmark.scoreBand} band)</span>
+              <span>${benchmark.baseValue.toLocaleString()}/mo</span>
+            </div>
+            {benchmark.priceBreakdown.map((adj, idx) => {
+              const sign = adj.direction === "positive" ? "+" : adj.direction === "negative" ? "−" : "";
+              const pct = Math.round(Math.abs(adj.percent) * 100);
+              const amt = Math.abs(adj.amount).toLocaleString();
+              return (
+                <div key={idx} className="flex justify-between gap-3 text-xs font-mono text-gray-700 border-t border-gray-200 pt-2">
+                  <span className="flex-1">{adj.label}</span>
+                  <span className="whitespace-nowrap text-gray-900">{sign}{pct}% · {sign}${amt}</span>
+                </div>
+              );
+            })}
+            <div className="flex justify-between text-xs font-mono font-semibold text-gray-900 border-t border-gray-300 pt-2">
+              <span>Final range (±25% around adjusted center)</span>
+              <span>${min.toLocaleString()} – ${max.toLocaleString()}/mo</span>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Rate comparison if provided */}
       {rateComparison && (
         <div className="border-t pt-4 space-y-3">

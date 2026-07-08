@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "SignalRent",
-  description: "Cell tower lease valuation. One address, 60 federal data points, one defensible number.",
+  description: "Cell tower lease valuation. One address, 60 federal data points, a data-backed estimate and a read on your negotiating leverage.",
 };
 
 export default function RootLayout({

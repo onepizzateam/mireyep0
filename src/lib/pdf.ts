@@ -487,10 +487,22 @@ export async function generatePDFBuffer(scoreData: ScoreResponse): Promise<Buffe
   yPosition -= 8;
 
   // ========== Site Score Summary ==========
+  // NOTE: The headline number here MUST match the web UI's "Site Score" (ScoreCard.tsx),
+  // which renders `score.baseline`. Composite (baseline × multiplier, unclamped) and the
+  // multiplier are shown as secondary lines exactly as they appear in the web UI.
   drawText("Site Score Summary", fontSize10, true);
   yPosition -= 4;
-  drawText(`Final Score: ${scoreData.score.final.toFixed(0)} / 100`, fontSize11, true);
-  yPosition -= 4;
+  drawText(`Site Score: ${scoreData.score.baseline.toFixed(0)} / 100`, fontSize11, true);
+  yPosition -= 2;
+  drawText(
+    `Composite (baseline x leverage multiplier): ${scoreData.score.composite.toFixed(0)}`,
+    fontSize8
+  );
+  drawText(
+    `Permitting Friction Multiplier: ${scoreData.score.multiplier.toFixed(2)}x`,
+    fontSize8
+  );
+  yPosition -= 2;
   drawText("Dimension Breakdown:", fontSize9);
   yPosition -= 2;
   drawText(
@@ -505,10 +517,6 @@ export async function generatePDFBuffer(scoreData: ScoreResponse): Promise<Buffe
     `Construction Cost: ${scoreData.score.dimensions.constructionCost.raw.toFixed(0)}/100 (25% weight)`,
     fontSize8
   );
-
-  yPosition -= 4;
-  drawText(`Baseline Score: ${scoreData.score.baseline.toFixed(0)}`, fontSize8);
-  drawText(`Permitting Friction Multiplier: ${scoreData.score.multiplier.toFixed(2)}×`, fontSize8);
 
   yPosition -= 8;
 
