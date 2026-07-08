@@ -14,6 +14,7 @@ export default function Home() {
   const [results, setResults] = useState<ScoreResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const handleScoreRequest = async (request: ScoreRequest) => {
     setIsLoading(true);
@@ -41,6 +42,44 @@ export default function Home() {
       console.error(err);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleDownloadReport = async (scoreResponse: ScoreResponse) => {
+    setIsDownloading(true);
+    try {
+      const response = await fetch("/api/report", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(scoreResponse),
+      });
+
+      if (!response.ok) {
+        setError("Failed to generate PDF report. Please try again.");
+        return;
+      }
+
+      // Get the PDF blob
+      const blob = await response.blob();
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `signalrent-report-${scoreResponse.lat.toFixed(4)}-${scoreResponse.lng.toFixed(4)}.pdf`;
+      
+      // Trigger download
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setError("Failed to download report. Please try again.");
+      console.error(err);
+    } finally {
+      setIsDownloading(false);
     }
   };
 
@@ -150,15 +189,19 @@ export default function Home() {
                 Full report — $49
               </h3>
               <p className="text-xs text-gray-600 font-mono">
-                Field-by-field breakdown, 10-year NPV, buyout fair value, and negotiation talking points derived from your site&apos;s highest-impact data points.
+                Field-by-field breakdown, comprehensive data analysis, and negotiation strategy derived from your site&apos;s highest-impact data points.
               </p>
               <button
-                disabled
-                className="w-full bg-black hover:shadow-md disabled:opacity-60 text-white text-sm font-medium py-2 transition cursor-not-allowed" style={{borderRadius: '4px'}}
-                title="Coming soon"
+                onClick={() => handleDownloadReport(results)}
+                disabled={isDownloading}
+                className="w-full bg-black hover:bg-gray-900 disabled:opacity-60 hover:shadow-md text-white text-sm font-medium py-2 transition cursor-pointer" style={{borderRadius: '4px'}}
+                title="Download your comprehensive PDF report"
               >
-                Coming Soon
+                {isDownloading ? "Generating PDF..." : "Download Report (PDF)"}
               </button>
+              <p className="text-xs text-gray-500 font-mono">
+                Payment integration coming soon — button provided for demonstration.
+              </p>
             </div>
           </div>
         )}

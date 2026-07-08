@@ -56,5 +56,8 @@ export const SITE_TYPE_THRESHOLDS = {
     nearestUrbanAreaDistance: 25000, // < this = suburban
     housingUnitsDensity: 400, // > this = suburban
   },
-  // rural is the fallback
+  rural: {
+    nearestUrbanAreaDistance: 25000, // >= this = rural (matches suburban's upper bound)
+    housingUnitsDensity: 400, // <= this = rural
+  },
 } as const;

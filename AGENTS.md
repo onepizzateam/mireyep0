@@ -10,7 +10,7 @@
 
 **SignalRent** is a web application that tells US property owners what their cell tower lease is actually worth and how hard the carrier needs their site.
 
-A landlord enters an address, an optional carrier name, and an optional offered/current rent. The app fetches 42 fields from the Mireye API, runs a scoring model across four dimensions, and returns:
+A landlord enters an address (via search + a draggable map pin to confirm the exact site location — see Section 11), an optional carrier name, and an optional offered/current rent. The app fetches 60 fields from the Mireye API (two parallel 30-field batch requests — Mireye caps single requests at 50 fields), runs a scoring model across four dimensions, and returns:
 
 1. A site score (0–100) with a visual breakdown by dimension
 2. A benchmark monthly rent range calibrated to site type and score
@@ -18,7 +18,7 @@ A landlord enters an address, an optional carrier name, and an optional offered/
 4. If a rate was entered: a comparison showing how far above/below market the offer sits
 5. If a buyout amount was entered: a fair value range and multiple comparison
 
-The free tier shows all of the above in the browser. A "Get Full Report" button (gated, not yet built — stub it) leads to a $49 paid PDF report.
+The free tier shows all of the above in the browser. A "Get Full Report — $49" button generates a real PDF report server-side (see Section 15) — cover section, full dimension breakdown, benchmark range, field-level table, expanded leverage summary, and data provenance/limitations. Payment is not wired up (button is gated but Stripe integration is out of scope for MVP) — see Section 15.
 
 **Stack**: Next.js 14 (App Router), TypeScript, Tailwind CSS, shadcn/ui. No database for MVP — all computation is stateless per request. Deploy target: Vercel.
 
@@ -66,7 +66,7 @@ signalrent/
 │   │   └── types.ts           ← all shared TypeScript types
 │   │
 │   └── constants/
-│       ├── fields.ts          ← the 42 Mireye field names as a typed array
+│       ├── fields.ts          ← the 60 Mireye field names as a typed array, split into two 30-field batches
 │       ├── weights.ts         ← dimension weights and multiplier thresholds
 │       └── benchmarks.ts      ← benchmark range tables by site type and score band
 │
@@ -91,9 +91,9 @@ The Mireye API key lives server-side only. It is never sent to the client. All M
 
 ---
 
-## 3. The 42 Mireye Fields
+## 3. The 60 Mireye Fields
 
-These are the exact field names to request in the `/v1/fetch` call. Store them in `src/constants/fields.ts` as a `const` array and import everywhere — never hard-code field name strings outside this file.
+These are the exact field names to request. Store them in `src/constants/fields.ts` as two `const` arrays — `MIREYE_FIELDS_BATCH_1` and `MIREYE_FIELDS_BATCH_2`, 30 fields each — and import everywhere; never hard-code field name strings outside this file. Mireye enforces a 50-field cap per `/v1/fetch` call, so the 60 fields must be split and fetched as two parallel requests (fire both with `Promise.all`; wall time is the slower batch, not the sum).
 
 ### Dimension 1 — Coverage Necessity (weight: 40%)
 ```
@@ -171,7 +171,7 @@ primary_building_height_m
 nearest_class_i_area_distance_m
 ```
 
-**Total: 42 fields.** The Mireye `/v1/fetch` call should request all 42 in a single request.
+**Total: 60 fields.** Split across two parallel `/v1/fetch` batch requests (30 fields each) to stay under Mireye's 50-field-per-call limit.
 
 ---
 
@@ -194,7 +194,7 @@ POST /v1/fetch
 Body: {
   "lat": number,
   "lng": number,
-  "fields": string[]   // the 42 field names
+  "fields": string[]   // 30 field names per call — fire two calls in parallel, one per batch
 }
 ```
 
@@ -211,10 +211,10 @@ type MireyeResponse = {
 ```
 
 ### Implementation notes
-- Wrap in a typed function `fetchMireyeFields(lat: number, lng: number): Promise<MireyeFields>`
-- `MireyeFields` is a flat object mapping each of the 42 field names to its value (unwrap the `value` key from the Mireye response object)
+- Wrap in a typed function `fetchMireyeFields(lat: number, lng: number): Promise<MireyeFields>` — internally fires both 30-field batches in parallel via `Promise.all` and merges the results
+- `MireyeFields` is a flat object mapping each of the 60 field names to its value (unwrap the `value` key from the Mireye response object)
 - If a field comes back null, the scoring model must handle it gracefully — see Section 5
-- Set a 15-second timeout on the fetch; if it times out, throw a `MireyeTimeoutError`
+- Set a per-batch timeout of 45 seconds (observed: batch 2 — permitting/climate fields — can take 20–28s on slow responses); if a batch times out, throw a `MireyeTimeoutError`
 - Log the raw response to server console in dev, suppress in production
 - Do not retry on failure for MVP — surface the error to the user
 
@@ -301,10 +301,12 @@ siteType = "urban"    if nearest_urban_area_distance_m < 5000
 siteType = "suburban" if nearest_urban_area_distance_m < 25000
             AND housing_units_density_per_km2 > 400
 
-siteType = "rural"    otherwise
+siteType = "rural"    otherwise (both fields present, neither urban nor suburban condition met)
 ```
 
-If either field is null, fall back to "suburban" and add both to `dataGaps`.
+**Implementation note (this bit a real build — enforce it in code review):** `SITE_TYPE_THRESHOLDS` in `constants/weights.ts` must define explicit `rural` thresholds, not just `urban`/`suburban` with rural left as an implicit code comment. The classification function must have three distinct return paths — a site that fails both the urban and suburban checks must explicitly return `"rural"`, not silently fall through to the same code path as the null-data case below. Rural has historically been unreachable when this was implemented as "return suburban unless X or Y," so write it as an explicit if/else-if/else-if/else chain with `rural` as its own branch, not as the shared fallback.
+
+If either `nearest_urban_area_distance_m` or `housing_units_density_per_km2` is null, this is a *separate* case from genuine rural classification — fall back to `"suburban"` (the safest default given no location signal) and add both field names to `dataGaps`, clearly distinguishing "we don't know" from "we checked and it's rural."
 
 ### Step 2 — Score Dimension 1: Coverage Necessity (0–100)
 
@@ -702,7 +704,7 @@ type ScoreErrorResponse = {
 
 - Validate input with zod before calling anything external
 - Run geocoding first; if it fails, return `GEOCODING_FAILED` immediately
-- Call Mireye with all 42 fields in one request
+- Call Mireye with all 60 fields via `fetchMireyeFields()` (two parallel batch requests internally)
 - Run scoring, benchmark, leverage, comparison in memory — no async needed after Mireye
 - Log timing at each step in dev
 - Return HTTP 200 for both success and application-level errors (use `ok` field to distinguish)
@@ -730,13 +732,14 @@ type ScoreErrorResponse = {
 ### AddressForm
 
 Fields:
-- **Address** (text, required, placeholder: "123 Main St, Springfield, IL")
+- **Address** (text, required, placeholder: "123 Main St, Springfield, IL") — on selection from the Mapbox geocoder autocomplete, flies the map to that location and drops a draggable pin at the geocoded point
+- **Map pin** (Mapbox GL, 300px height, sits below the address input) — user drags the pin to the exact site location (parcel corner, road edge — wherever the tower actually is or would be). The confirmed pin coordinate, not the raw geocoded coordinate, is what gets sent to `/api/score`. Small mono-text coordinate readout below the map. Copy note below the map: "Drag the pin to the exact location — tower leases are typically signed on parcel corners near roads, not address centroids."
 - **Carrier / Tower Company** (text, optional, placeholder: "e.g. Crown Castle, Verizon, AT&T")
 - **Offered / Current Monthly Rate** (number, optional, placeholder: "$800")
 - **Buyout Offer** (number, optional, placeholder: "$95,000")
-- Submit button: "Analyze My Site"
+- Submit button: "Run valuation" — disabled until a pin has been placed
 
-On submit: POST to `/api/score`, show skeleton loader, render results.
+On submit: POST to `/api/score` with the confirmed `lat`/`lng`, show skeleton loader, render results.
 On error: show inline error message with `error` field from response.
 
 ### ScoreCard
@@ -830,17 +833,16 @@ Test the following scenarios:
 
 ## 15. What NOT to Build for MVP
 
-Do not build these. Stub them with a disabled button or a "coming soon" note.
+**Update:** PDF report generation has since been built (server-side, `@react-pdf/renderer` or equivalent, generated in an API route from the same scoring output — no duplicated logic). It is gated behind the "Get Full Report — $49" button but not connected to real payment. The remaining items below are still out of scope — stub them with a disabled button or a "coming soon" note:
 
-- PDF report generation
-- Payment / Stripe integration
+- Payment / Stripe integration (the report button is gated but doesn't charge anything yet — note in code where Stripe would hook in)
 - User accounts / authentication
 - Email capture
 - Database of any kind
 - Admin dashboard
 - Outcome feedback loop (user reports what they negotiated)
 
-The only thing that needs to work end-to-end: address in → score + benchmark + leverage out.
+The core loop that needs to work end-to-end: address in (via pin-confirmed location) → score + benchmark + leverage out, with an optional generated PDF report as the paid deliverable.
 
 ---
 
@@ -880,6 +882,10 @@ The build is done when:
 - [ ] If a buyout amount is entered, the fair value range and implied multiple are shown
 - [ ] The FCC tenancy caveat fires correctly when guyed towers are present
 - [ ] All null fields are handled without crashing
+- [ ] Site type classification produces all three of urban/suburban/rural on realistic test addresses (not defaulting to suburban) — verified against synthetic dense-urban, generic-suburban, and remote-rural field sets
+- [ ] Benchmark ranges visibly differ by site type and score band — not the same range for every address
+- [ ] The address input uses a draggable map pin, and the confirmed pin coordinate (not raw geocoder output) is what's sent to Mireye
+- [ ] The $49 report generates a real populated PDF from the same scoring output used on-screen
 - [ ] All three disclosures from Section 12 are visible in the UI
 - [ ] The app works on mobile
 - [ ] Unit tests pass for all five scoring scenarios
@@ -887,4 +893,4 @@ The build is done when:
 
 ---
 
-*Built on Mireye. 42 fields. One API call. One negotiation you don't lose.*
+*Built on Mireye. 60 fields. Two parallel requests. One negotiation you don't lose.*

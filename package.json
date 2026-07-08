@@ -13,12 +13,14 @@
   "dependencies": {
     "mapbox-gl": "^3.6.0",
     "next": "16.2.10",
+    "pdf-lib": "^1.17.1",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@jest/globals": "^29.7.0",
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4",
     "@types/jest": "^29.5.0",
     "@types/node": "^20",

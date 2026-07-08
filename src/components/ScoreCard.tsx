@@ -9,16 +9,29 @@ interface ScoreCardProps {
 export default function ScoreCard({ score }: ScoreCardProps) {
   return (
     <div className="w-full max-w-2xl mx-auto bg-white border border-gray-200 p-6 space-y-6" style={{borderRadius: '4px'}}>
-      {/* Main Score */}
+      {/* Primary: Baseline Score (0–100) */}
       <div className="flex items-baseline justify-between">
         <div>
           <h3 className="text-xs font-medium text-gray-600 uppercase mb-2">Site Score</h3>
           <div className="flex items-baseline gap-1">
             <p className="text-5xl font-mono font-bold" style={{color: '#FF6600'}}>
-              {Math.round(score.final)}
+              {Math.round(score.baseline)}
             </p>
             <p className="text-xl font-mono text-gray-400">/100</p>
           </div>
+          
+          {/* Secondary: Composite Score (unclamped) */}
+          <p className="text-sm font-mono text-gray-700 mt-2">
+            Composite: <span className="font-bold">{Math.round(score.composite)}</span>
+          </p>
+          
+          {/* Multiplier explanation */}
+          <p className="text-xs text-gray-500 mt-1">
+            Permitting friction: <span className="font-mono font-bold">{score.multiplier.toFixed(2)}×</span>
+          </p>
+          <p className="text-xs text-gray-500">
+            Higher = harder for carriers to replace this site.
+          </p>
         </div>
         <div className="flex-1 ml-8">
           <div className="w-full" style={{height: '3px', backgroundColor: '#E5E5E5'}}>
@@ -26,7 +39,7 @@ export default function ScoreCard({ score }: ScoreCardProps) {
               className="transition-all"
               style={{
                 height: '3px',
-                width: `${Math.min(100, score.final)}%`,
+                width: `${Math.min(100, score.baseline)}%`,
                 backgroundColor: '#FF6600'
               }}
             />
@@ -111,30 +124,11 @@ export default function ScoreCard({ score }: ScoreCardProps) {
         </div>
       </div>
 
-      {/* Leverage Multiplier */}
-      <div className="border-t pt-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-xs font-medium text-gray-600 uppercase">Leverage Multiplier</p>
-            <p className="text-xs text-gray-600 mt-1">
-              Permitting friction effect
-            </p>
-          </div>
-          <p className="text-2xl font-mono font-bold text-gray-900">
-            {score.multiplier.toFixed(2)}×
-          </p>
-        </div>
-      </div>
-
-      {/* Site Type & Baseline */}
-      <div className="border-t pt-4 flex justify-between">
+      {/* Site Type */}
+      <div className="border-t pt-4 flex justify-start">
         <div>
           <p className="text-xs font-medium text-gray-600 uppercase">Site Type</p>
           <p className="text-sm font-mono text-gray-900 capitalize mt-1">{score.siteType}</p>
-        </div>
-        <div>
-          <p className="text-xs font-medium text-gray-600 uppercase">Baseline</p>
-          <p className="text-sm font-mono text-gray-900 mt-1">{Math.round(score.baseline)}/100</p>
         </div>
       </div>
     </div>

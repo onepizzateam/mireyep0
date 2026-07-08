@@ -184,8 +184,8 @@ export async function POST(request: NextRequest): Promise<NextResponse<ScoreResp
     // Step 3: Compute site score
     const siteScore = computeSiteScore(mireyeFields);
 
-    // Step 4: Compute benchmark
-    const benchmark = computeBenchmarkRange(siteScore);
+    // Step 4: Compute benchmark (pass fields for itemized adjustments)
+    const benchmark = computeBenchmarkRange(siteScore, mireyeFields);
 
     // Step 5: Generate leverage summary
     const leverageSummary = generateLeverageSummary(

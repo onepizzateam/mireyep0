@@ -126,6 +126,7 @@ export interface PermittingFriction {
 export interface SiteScore {
   baseline: number; // 0–100, weighted sum of dim 1–3
   multiplier: number; // 0.5–2.0 from permitting friction
+  composite: number; // baseline × multiplier, UNCLAMPED (can exceed 100)
   final: number; // baseline × multiplier, clamped 0–100
   dimensions: {
     coverageNecessity: DimensionScore;
@@ -148,12 +149,22 @@ export interface PriceRange {
   max: number;
 }
 
+export interface PriceAdjustment {
+  label: string; // e.g. "High density area (+12%)"
+  fieldName: string; // Mireye field that drove this, e.g. "housing_units_density_per_km2"
+  amount: number; // dollar amount added/subtracted to the monthly base (rounded)
+  percent: number; // the % adjustment applied, for display (e.g. 0.12 for +12%)
+  direction: "positive" | "negative" | "neutral";
+}
+
 export interface BenchmarkResult {
   monthlyRange: PriceRange;
   annualRange: PriceRange;
   siteType: SiteType;
   scoreBand: ScoreBand;
   calibrationNote: string;
+  baseValue: number; // the anchor value before adjustments (band midpoint)
+  priceBreakdown: PriceAdjustment[]; // itemized adjustments, in the order applied
 }
 
 export interface BuyoutComparison {

@@ -34,6 +34,10 @@ export const BUYOUT_MULTIPLES = {
 /**
  * Calibration note shown to users alongside benchmark ranges
  * Per AGENTS.md Section 7
+ * Updated to reflect the itemized adjustment model
  */
 export const BENCHMARK_CALIBRATION_NOTE =
-  "Benchmark range calibrated to published industry data (Steel in the Air, Vertical Consultants, Tower Genius) and three documented negotiated outcomes. This is an informed prior, not a transaction database — actual negotiated rates in your area may vary.";
+  "Base range calibrated to published industry data (Steel in the Air, Vertical Consultants, Tower Genius) " +
+  "for this site type and score band. Adjustments are applied individually for site-specific factors " +
+  "(density, competing structures, accessibility, construction risk) and shown in the breakdown below. " +
+  "This is an informed estimate, not a transaction database — actual negotiated rates may vary.";
