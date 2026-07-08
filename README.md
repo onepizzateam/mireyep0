@@ -12,10 +12,6 @@ SignalRent tells US property owners what their cell tower lease is actually wort
 - Negotiating position analysis
 - Optional rate comparison and buyout analysis
 
-## Quick Deploy
-
-[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2FYOURNAME%2Fsignalrent&env=MIREYE_API_KEY&project-name=signalrent&repository-name=signalrent)
-
 ## Environment Setup
 
 ### Required: Mireye API Key & Mapbox Token
