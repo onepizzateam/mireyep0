@@ -15,7 +15,7 @@ let sessionPromise: Promise<Session> | undefined;
 let authTokenCalls = 0;
 
 function getBearerToken() {
-  const token = process.env.MIREYE_BEARER_TOKEN;
+  const token = process.env.MIREYE_MCP_ACCESS_TOKEN ?? process.env.MIREYE_BEARER_TOKEN;
   if (!token) throw new Error("MIREYE_BEARER_TOKEN missing");
   return token;
 }
