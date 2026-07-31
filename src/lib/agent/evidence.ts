@@ -33,6 +33,7 @@ export class EvidenceRegistry {
   getSupportingEvidence() { return this.evidence.filter((e) => e.confidence >= .65); }
   getContradictions() { return this.evidence.filter((e) => e.confidence < .4); }
   all() { return [...this.evidence]; }
+  size() { return this.evidence.length; }
   providersFor(request: EvidenceRequest) { return [...this.providers.values()].filter(async (p) => p.supports(request)); }
   getCapabilities() { return [...this.capabilities.values()]; }
   providerList() { return [...this.providers.values()]; }
