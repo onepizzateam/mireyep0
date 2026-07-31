@@ -32,13 +32,13 @@ export default function Home() {
       });
 
       const data = (await response.json()) as ScoreResponse | ScoreErrorResponse;
-      console.info("[score] client response", { httpStatus: response.status, ok: data.ok, keys: Object.keys(data), hasScore: data.ok ? Boolean(data.score) : false, hasBenchmark: data.ok ? Boolean(data.benchmark) : false });
+      console.info("[score] client response", JSON.stringify({ httpStatus: response.status, ok: data.ok, keys: Object.keys(data), hasScore: data.ok ? Boolean(data.score) : false, hasBenchmark: data.ok ? Boolean(data.benchmark) : false }));
 
       if (!data.ok) {
         setError(data.error);
       } else {
         setResults(data);
-        console.info("[score] client state", { resultPresent: true, scorePresent: Boolean(data.score), benchmarkPresent: Boolean(data.benchmark) });
+        console.info("[score] client state", JSON.stringify({ resultPresent: true, scorePresent: Boolean(data.score), benchmarkPresent: Boolean(data.benchmark) }));
       }
     } catch (err) {
       setError("An unexpected error occurred. Please try again.");
