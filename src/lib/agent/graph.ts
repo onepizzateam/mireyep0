@@ -1,81 +1,23 @@
 import { Annotation, StateGraph } from "@langchain/langgraph";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
-import { mcpResource, mcpTool } from "./mcp";
+import { mcpTool } from "./mcp";
+import { EvidenceRegistry, discover, type EvidenceRequest, type Location } from "./evidence";
+import { mireyeProvider, openCellIdProvider } from "./providers";
 import type { ScoreResponse, IntelligenceLayers } from "@/lib/types";
-import { fetchFederalLayer } from "./federal";
-
-interface MireyeLocation { lat?: number; lng?: number; displayAddress?: string; label?: string; parcelGrade?: boolean; }
-interface MireyeLookupResponse {
-  disposition?: "clarify" | "no_match" | "ok";
-  candidates?: Array<{ label?: string }>;
-  location?: MireyeLocation;
-  parcelGrade?: boolean;
-  fields?: Record<string, unknown>;
-  data?: Record<string, unknown>;
-  content?: Record<string, unknown>;
-  structuredContent?: Record<string, unknown>;
-  [key: string]: unknown;
-}
-interface CatalogEntry { name?: string; field?: string; description?: string; [key: string]: unknown; }
 
 export const SignalRentState = Annotation.Root({
   address: Annotation<string>(), lat: Annotation<number | undefined>(), lng: Annotation<number | undefined>(), carrier: Annotation<string | undefined>(), offeredRate: Annotation<number | undefined>(), buyoutAmount: Annotation<number | undefined>(),
-  resolvedLat: Annotation<number>(), resolvedLng: Annotation<number>(), displayAddress: Annotation<string>(), parcelGrade: Annotation<boolean>(), catalogSummary: Annotation<string>(), fetchedFields: Annotation<Record<string, unknown>>(), selectedFields: Annotation<string[]>(), intelligence: Annotation<Partial<IntelligenceLayers>>({ reducer: (left, right) => ({ ...(left ?? {}), ...(right ?? {}) }), default: () => ({}) }), result: Annotation<ScoreResponse | null>(), error: Annotation<string | null>(),
+  resolvedLat: Annotation<number>(), resolvedLng: Annotation<number>(), displayAddress: Annotation<string>(), evidence: Annotation<any[]>({ reducer: (a, b) => [...(a ?? []), ...(b ?? [])], default: () => [] }), capabilities: Annotation<any[]>(), result: Annotation<ScoreResponse | null>(), error: Annotation<string | null>(),
 });
-
 type State = typeof SignalRentState.State;
-const unwrap = (v: MireyeLookupResponse): MireyeLookupResponse => (v?.content ?? v?.structuredContent ?? v?.data ?? v) as MireyeLookupResponse;
-const fields = (v: MireyeLookupResponse): Record<string, unknown> => (unwrap(v)?.fields ?? unwrap(v)?.data ?? unwrap(v) ?? {}) as Record<string, unknown>;
+const registry = new EvidenceRegistry(); registry.addProvider(mireyeProvider); registry.addProvider(openCellIdProvider);
+const unwrap = (v: any) => v?.structuredContent ?? v?.data ?? v?.content ?? v;
 
-async function lookupNode(state: State) {
-  const response: MireyeLookupResponse = unwrap(await mcpTool("mireye_lookup", { input: state.lat !== undefined && state.lng !== undefined ? `${state.lat},${state.lng}` : state.address }) as MireyeLookupResponse);
-  if (response?.disposition === "clarify") return { error: `Address is ambiguous: ${response.candidates?.[0]?.label} or ${response.candidates?.[1]?.label}` };
-  if (response?.disposition === "no_match") return { error: "Address not found." };
-  const location = response?.location ?? response;
-  return { resolvedLat: Number(location.lat), resolvedLng: Number(location.lng), displayAddress: location.displayAddress ?? location.label ?? state.address, parcelGrade: Boolean(location.parcelGrade ?? response.parcelGrade), fetchedFields: fields(response) };
-}
+async function resolveNode(state: State) { const response = unwrap(await mcpTool("mireye_lookup", { input: state.lat !== undefined && state.lng !== undefined ? `${state.lat},${state.lng}` : state.address })); if (response?.disposition === "clarify") return { error: `Address is ambiguous: ${(response.candidates ?? []).map((c: any) => c.label).join(" or ")}` }; if (response?.disposition === "no_match") return { error: "Address not found." }; const location = response.location ?? response; return { resolvedLat: Number(location.lat), resolvedLng: Number(location.lng), displayAddress: location.displayAddress ?? location.label ?? state.address }; }
+async function discoverNode() { return { capabilities: await discover(registry) }; }
+async function collectNode(state: State) { const location: Location = { lat: state.resolvedLat, lng: state.resolvedLng, displayAddress: state.displayAddress }; const requests: EvidenceRequest[] = [{ concept: "population and demand", category: "population", importance: "high", reason: "estimate subscriber value" }, { concept: "terrain, hazards, utilities and access", category: "hazard", importance: "high", reason: "estimate construction and permitting friction" }, { concept: "nearby towers, carriers and coverage", category: "coverage", importance: "high", reason: "estimate coverage necessity and competition" }]; const batches = await Promise.all(registry.providerList().map((p) => p.collectEvidence(location, requests).catch((error) => [{ id: `${p.metadata().id}:error`, provider: p.metadata().id, category: "unknown" as const, summary: `Provider unavailable: ${String(error)}`, confidence: 0, importance: "high" as const, provenance: { source: p.metadata().name, retrievedAt: new Date().toISOString() }, timestamp: new Date().toISOString() }]))); const evidence = batches.flat(); registry.addEvidence(...evidence); return { evidence }; }
+async function reasonNode(state: State) { const model = new ChatGoogleGenerativeAI({ model: "gemini-3.1-flash-lite", temperature: 0, apiKey: process.env.GEMINI_API_KEY }); const prompt = `Location: ${state.displayAddress} (${state.resolvedLat}, ${state.resolvedLng})\nCarrier: ${state.carrier ?? "unknown"}\nOffered rate: ${state.offeredRate ?? "not provided"}\nBuyout: ${state.buyoutAmount ?? "not provided"}\nDiscovered capabilities: ${JSON.stringify(state.capabilities)}\nEvidence registry: ${JSON.stringify(state.evidence, null, 2)}`; const message = await model.invoke([new SystemMessage("You are SignalRent's evidence-based valuation reasoner. Reason only from the evidence registry. Do not invent values, fields, providers, weights, scores, thresholds, or missing facts. Explain uncertainty, contradictions, missing evidence, strengths, weaknesses, negotiation leverage, and next steps. Return only <reasoning>...</reasoning><output>{valid ScoreResponse JSON}</output>."), new HumanMessage(prompt)]); const text = String(message.content); const output = text.match(/<output>([\s\S]*?)<\/output>/i)?.[1]; if (!output) throw new Error("Reasoner returned no output"); return { result: { ...JSON.parse(output), reasoning: text.match(/<reasoning>([\s\S]*?)<\/reasoning>/i)?.[1]?.trim() ?? "", intelligence: {} as IntelligenceLayers } as ScoreResponse }; }
+async function validateNode(state: State) { if (!state.result) return { error: "Reasoner returned no result" }; return { result: state.result }; }
 
-async function catalogNode() {
-  const [rawFields, rawPresets] = await Promise.all([mcpResource("mireye://catalog/fields"), mcpResource("mireye://catalog/presets")]);
-  const value = unwrap(rawFields as MireyeLookupResponse);
-  const raw = (value?.fields ?? value?.data ?? value) as CatalogEntry[] | Record<string, CatalogEntry> | null;
-  const lines: string[] = Array.isArray(raw) ? raw.map((x) => `${x.name ?? x.field ?? ""}: ${String(x.description ?? "").split(".")[0]}`) : Object.entries((raw as Record<string, CatalogEntry>) ?? {}).map(([k, x]) => `${k}: ${String(x?.description ?? x ?? "").split(".")[0]}`);
-  const presetText = JSON.stringify(unwrap(rawPresets as MireyeLookupResponse));
-  return { catalogSummary: `${lines.join("\n").slice(0, 5900)}\nPresets: ${presetText.includes("cell_tower_siting") ? "cell_tower_siting" : "site_selection"}` };
-}
-
-const explicitFields = ["antenna_structures_within_500m_count","antenna_structures_within_2km_count","nearest_antenna_structure_distance_m","nearest_antenna_structure_type","housing_units_within_1km","housing_units_density_per_km2","poi_count_1km","nearest_urban_area_distance_m","total_road_length_within_500m_m","slope_degrees","seismic_pga_2pct_50yr_g","landslide_susceptibility_index","within_floodplain_polygon","intersects_nhd_area","wetlands_area_pct","zoning_classification","fcc_asm_tower_height_m","population_density_per_km2","median_household_income"];
-async function fetchNode(state: State) {
-  const preset = state.catalogSummary.includes("cell_tower_siting") ? "cell_tower_siting" : "site_selection";
-  const [a, b] = await Promise.all([mcpTool("mireye_fetch", { lat: state.resolvedLat, lng: state.resolvedLng, preset }), mcpTool("mireye_fetch", { lat: state.resolvedLat, lng: state.resolvedLng, fields: explicitFields })]);
-  return { fetchedFields: { ...state.fetchedFields, ...fields(a), ...fields(b) }, selectedFields: explicitFields };
-}
-
-const system = `You are SignalRent's valuation engine. Analyze US cell tower lease sites for landlords. Return transparent structured JSON. Use exact weights: coverageNecessity .4, subscriberValue .35, constructionCost .25. Classify urban when nearest_urban_area_distance_m < 5000 and housing_units_density_per_km2 > 1000; suburban when distance < 25000 and density > 200; otherwise rural. Monthly base ranges: urban 2500-8000, suburban 1200-4500, rural 400-2000. Include reasoning, topFields (at least 3), dataGaps with field/impact/assumption, benchmark adjustments, leverageSummary paragraphs, and optional rate/buyout comparisons. Output only <reasoning>...</reasoning><output>{JSON}</output>.`;
-async function federalNode(state: State, kind: "bdc" | "uls" | "opencellid" | "faa" | "auction") {
-  try {
-    return { intelligence: await fetchFederalLayer(kind, state.resolvedLat, state.resolvedLng, String(state.fetchedFields.political_county ?? "")) };
-  } catch (e) {
-    return { intelligence: { [kind]: { error: String(e), citations: [] } } };
-  }
-}
-const bdcNode = (s: State) => federalNode(s, "bdc");
-const ulsNode = (s: State) => federalNode(s, "uls");
-const opencellidNode = (s: State) => federalNode(s, "opencellid");
-const faaNode = (s: State) => federalNode(s, "faa");
-const auctionNode = (s: State) => federalNode(s, "auction");
-async function reasonNode(state: State) {
-  const model = new ChatGoogleGenerativeAI({ model: "gemini-3.1-flash-lite", temperature: 0, apiKey: process.env.GEMINI_API_KEY });
-  const prompt = `Site address: ${state.displayAddress}\nCoordinates: ${state.resolvedLat}, ${state.resolvedLng}\nParcel-grade: ${state.parcelGrade}\nCarrier: ${state.carrier ?? "unknown"}\nOffered rate: ${state.offeredRate ?? "not provided"}\nBuyout: ${state.buyoutAmount ?? "not provided"}\nCatalog:\n${state.catalogSummary}\nMireye fields:\n${JSON.stringify(state.fetchedFields, null, 2)}\nFederal intelligence layers (missing/error values must be acknowledged, never invented):\n${JSON.stringify(state.intelligence ?? {}, null, 2)}`;
-  const message = await model.invoke([new SystemMessage(system), new HumanMessage(prompt)]); const text = String(message.content); const reasoning = text.match(/<reasoning>([\s\S]*?)<\/reasoning>/i)?.[1]?.trim() ?? ""; const output = text.match(/<output>([\s\S]*?)<\/output>/i)?.[1];
-  if (!output) throw new Error("LLM output did not contain an output block");
-  return { result: { ...JSON.parse(output), reasoning, intelligence: state.intelligence } as ScoreResponse };
-}
-
-async function validateNode(state: State) {
-  const r = state.result; const checks: Array<[boolean, string]> = [[typeof r?.score?.baseline === "number" && r.score.baseline >= 0 && r.score.baseline <= 100, "score.baseline"], [typeof r?.score?.composite === "number", "score.composite"], [(r?.benchmark?.monthlyRange?.min ?? 0) < (r?.benchmark?.monthlyRange?.max ?? 0) && (r?.benchmark?.monthlyRange?.min ?? 0) > 0, "benchmark range"], [Array.isArray(r?.leverageSummary) && r.leverageSummary.length >= 1, "leverage paragraphs"]]; const failed = checks.find(([ok]) => !ok); return failed ? { error: `Validation failed: ${failed[1]}`, result: null } : { result: r };
-}
-
-const graph = new StateGraph(SignalRentState).addNode("lookup", lookupNode).addNode("catalog", catalogNode).addNode("fetch", fetchNode).addNode("bdc", bdcNode).addNode("uls", ulsNode).addNode("opencellid", opencellidNode).addNode("faa", faaNode).addNode("auction", auctionNode).addNode("reason", reasonNode).addNode("validate", validateNode).addEdge("__start__", "lookup").addConditionalEdges("lookup", (s) => s.error ? "__end__" : "catalog").addEdge("catalog", "fetch").addEdge("fetch", "bdc").addEdge("fetch", "uls").addEdge("fetch", "opencellid").addEdge("fetch", "faa").addEdge("fetch", "auction").addEdge("bdc", "reason").addEdge("uls", "reason").addEdge("opencellid", "reason").addEdge("faa", "reason").addEdge("auction", "reason").addEdge("reason", "validate").addEdge("validate", "__end__").compile();
-export { graph };
+export const graph = new StateGraph(SignalRentState).addNode("resolveLocation", resolveNode).addNode("discoverCapabilities", discoverNode).addNode("collectEvidence", collectNode).addNode("reason", reasonNode).addNode("validate", validateNode).addEdge("__start__", "resolveLocation").addConditionalEdges("resolveLocation", (s) => s.error ? "__end__" : "discoverCapabilities").addEdge("discoverCapabilities", "collectEvidence").addEdge("collectEvidence", "reason").addEdge("reason", "validate").addEdge("validate", "__end__").compile();
