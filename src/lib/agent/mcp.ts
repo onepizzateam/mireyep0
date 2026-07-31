@@ -75,6 +75,7 @@ async function createSession(): Promise<Session> {
     console.log("Mireye MCP connected and initialized");
     return { client, transport };
   } catch (error) {
+    console.error("Mireye MCP session initialization failed", error instanceof Error ? error.message : String(error));
     if (error instanceof UnauthorizedError) {
       console.warn(`Mireye MCP UnauthorizedError: ${error.message}`);
     }
@@ -146,6 +147,7 @@ export async function mcpTool(tool: string, args: Record<string, unknown>): Prom
       }
       return decodeToolResult(result) as never;
     } catch (error) {
+      console.error(`Mireye MCP tool ${tool} request failed`, error instanceof Error ? error.message : String(error));
     if (error instanceof UnauthorizedError) {
       console.warn(`Mireye MCP UnauthorizedError: ${error.message}`);
     }
@@ -166,6 +168,7 @@ export async function mcpResource(uri: string) {
       console.log(`Mireye MCP resource: ${uri}`);
       return decodeResourceResult(await client.readResource({ uri }, { timeout: REQUEST_TIMEOUT }));
     } catch (error) {
+      console.error(`Mireye MCP resource ${uri} request failed`, error instanceof Error ? error.message : String(error));
       if (attempt === 0 && shouldRetry(error)) {
         await reconnect();
         continue;
