@@ -1,4 +1,6 @@
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
+import type { OAuthClientProvider } from "@modelcontextprotocol/sdk/client/auth.js";
+import { UnauthorizedError } from "@modelcontextprotocol/sdk/client/auth.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 
 const MIREYE_MCP = "https://api.mireye.com/mcp";
@@ -10,6 +12,7 @@ type Session = {
 };
 
 let sessionPromise: Promise<Session> | undefined;
+let authTokenCalls = 0;
 
 function getBearerToken() {
   const token = process.env.MIREYE_BEARER_TOKEN;
@@ -29,13 +32,33 @@ function shouldRetry(error: unknown) {
 
 async function createSession(): Promise<Session> {
   try {
-    const token = getBearerToken();
-    const transport = new StreamableHTTPClientTransport(new URL(MIREYE_MCP), {
-      requestInit: {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+    const authProvider: OAuthClientProvider = {
+      redirectUrl: undefined,
+      clientMetadata: {
+        redirect_uris: [],
+        token_endpoint_auth_method: "none",
+        grant_types: ["client_credentials"],
       },
+      clientInformation: async () => undefined,
+      tokens: async () => {
+        authTokenCalls += 1;
+        console.log(`Mireye MCP authProvider.tokens() called (${authTokenCalls})`);
+        return {
+          access_token: getBearerToken(),
+          token_type: "Bearer",
+        };
+      },
+      saveTokens: async () => {
+        console.log("Mireye MCP authProvider.saveTokens() called");
+      },
+      redirectToAuthorization: async (authorizationUrl) => {
+        console.log(`Mireye MCP OAuth authorization URL: ${authorizationUrl}`);
+      },
+      saveCodeVerifier: async () => undefined,
+      codeVerifier: async () => "",
+    };
+    const transport = new StreamableHTTPClientTransport(new URL(MIREYE_MCP), {
+      authProvider,
       reconnectionOptions: {
         maxRetries: 1,
         initialReconnectionDelay: 250,
@@ -52,6 +75,9 @@ async function createSession(): Promise<Session> {
     console.log("Mireye MCP connected and initialized");
     return { client, transport };
   } catch (error) {
+    if (error instanceof UnauthorizedError) {
+      console.warn(`Mireye MCP UnauthorizedError: ${error.message}`);
+    }
     if (isAuthenticationError(error)) {
       throw new Error("Mireye MCP authentication failed", { cause: error });
     }
@@ -120,6 +146,9 @@ export async function mcpTool(tool: string, args: Record<string, unknown>): Prom
       }
       return decodeToolResult(result) as never;
     } catch (error) {
+    if (error instanceof UnauthorizedError) {
+      console.warn(`Mireye MCP UnauthorizedError: ${error.message}`);
+    }
       if (attempt === 0 && shouldRetry(error)) {
         await reconnect();
         continue;
