@@ -10,6 +10,7 @@ import DataGapBanner from "@/components/DataGapBanner";
 import FieldDisclosure from "@/components/FieldDisclosure";
 import { AgentReasoning } from "@/components/AgentReasoning";
 import { ScoreRequest, ScoreResponse, ScoreErrorResponse } from "@/lib/types";
+import { parseScoreResponse } from "@/lib/response-schema";
 
 export default function Home() {
   const [results, setResults] = useState<ScoreResponse | null>(null);
@@ -37,8 +38,18 @@ export default function Home() {
       if (!data.ok) {
         setError(data.error);
       } else {
-        setResults(data);
-        console.info("[score] client state", JSON.stringify({ resultPresent: true, scorePresent: Boolean(data.score), benchmarkPresent: Boolean(data.benchmark) }));
+        const parsed = parseScoreResponse(data);
+        if (!parsed.success) {
+        console.error("[score] client response contract failure", JSON.stringify({
+          keys: Object.keys(data),
+          issueCount: parsed.error.issues.length,
+          issuePaths: parsed.error.issues.slice(0, 8).map((issue) => issue.path.join(".")),
+        }));
+        setError("The valuation response was incomplete. Please try again.");
+        } else {
+          setResults(parsed.data as ScoreResponse);
+          console.info("[score] client state", JSON.stringify({ resultPresent: true, scorePresent: true, benchmarkPresent: true }));
+        }
       }
     } catch (err) {
       setError("An unexpected error occurred. Please try again.");
