@@ -1,5 +1,5 @@
 import { Annotation, StateGraph } from "@langchain/langgraph";
-import { ChatAnthropic } from "@langchain/anthropic";
+import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { mcpResource, mcpTool } from "./mcp";
 import type { ScoreResponse, IntelligenceLayers } from "@/lib/types";
@@ -66,7 +66,7 @@ const opencellidNode = (s: State) => federalNode(s, "opencellid");
 const faaNode = (s: State) => federalNode(s, "faa");
 const auctionNode = (s: State) => federalNode(s, "auction");
 async function reasonNode(state: State) {
-  const model = new ChatAnthropic({ model: "claude-haiku-4-5", temperature: 0, apiKey: process.env.ANTHROPIC_API_KEY });
+  const model = new ChatGoogleGenerativeAI({ model: "gemini-3.1-flash-lite", temperature: 0, apiKey: process.env.GEMINI_API_KEY });
   const prompt = `Site address: ${state.displayAddress}\nCoordinates: ${state.resolvedLat}, ${state.resolvedLng}\nParcel-grade: ${state.parcelGrade}\nCarrier: ${state.carrier ?? "unknown"}\nOffered rate: ${state.offeredRate ?? "not provided"}\nBuyout: ${state.buyoutAmount ?? "not provided"}\nCatalog:\n${state.catalogSummary}\nMireye fields:\n${JSON.stringify(state.fetchedFields, null, 2)}\nFederal intelligence layers (missing/error values must be acknowledged, never invented):\n${JSON.stringify(state.intelligence ?? {}, null, 2)}`;
   const message = await model.invoke([new SystemMessage(system), new HumanMessage(prompt)]); const text = String(message.content); const reasoning = text.match(/<reasoning>([\s\S]*?)<\/reasoning>/i)?.[1]?.trim() ?? ""; const output = text.match(/<output>([\s\S]*?)<\/output>/i)?.[1];
   if (!output) throw new Error("LLM output did not contain an output block");
