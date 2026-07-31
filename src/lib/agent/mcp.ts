@@ -13,6 +13,14 @@ type Session = {
 
 let sessionPromise: Promise<Session> | undefined;
 let authTokenCalls = 0;
+const CACHE_TTL_MS = Number(process.env.MIREYE_CACHE_TTL_MS ?? 86_400_000);
+const lookupCache = new Map<string, { expires: number; value: unknown }>();
+const resourceCache = new Map<string, { expires: number; value: unknown }>();
+export type McpUsage = { initialize: number; connect: number; lookup: number; fetch: number; ask: number; catalog: number; presets: number; retries: number; reconnects: number; total: number };
+const emptyUsage = (): McpUsage => ({ initialize: 0, connect: 0, lookup: 0, fetch: 0, ask: 0, catalog: 0, presets: 0, retries: 0, reconnects: 0, total: 0 });
+let activeUsage: McpUsage | undefined;
+function record(kind: keyof McpUsage) { if (activeUsage) { activeUsage[kind] += 1; activeUsage.total += 1; } }
+export function beginMcpUsage() { activeUsage = emptyUsage(); return () => { const result = activeUsage ?? emptyUsage(); activeUsage = undefined; return result; }; }
 
 function getBearerToken() {
   const token = process.env.MIREYE_MCP_ACCESS_TOKEN ?? process.env.MIREYE_BEARER_TOKEN;
@@ -27,7 +35,8 @@ function isAuthenticationError(error: unknown) {
 
 function shouldRetry(error: unknown) {
   if (error instanceof Error && error.message === "MIREYE_BEARER_TOKEN missing") return false;
-  return !isAuthenticationError(error);
+  const message = error instanceof Error ? error.message : String(error);
+  return !/credits_exhausted|quota|rate.?limit|validation|invalid|unauthorized|authentication|\b401\b|\b403\b/i.test(message);
 }
 
 async function createSession(): Promise<Session> {
@@ -71,7 +80,7 @@ async function createSession(): Promise<Session> {
       { capabilities: {} },
     );
 
-    await client.connect(transport);
+    record("initialize"); await client.connect(transport); record("connect");
     console.log("Mireye MCP connected and initialized");
     return { client, transport };
   } catch (error) {
@@ -97,6 +106,7 @@ async function getSession() {
 }
 
 async function reconnect() {
+  record("reconnects");
   const current = sessionPromise;
   sessionPromise = undefined;
   if (current) {
@@ -135,23 +145,26 @@ function decodeResourceResult(result: { contents?: Array<{ text?: string; blob?:
 }
 
 export async function mcpTool(tool: string, args: Record<string, unknown>): Promise<never> {
+  const cacheKey = tool === "mireye_lookup" ? JSON.stringify(args) : undefined;
+  if (cacheKey) { const cached = lookupCache.get(cacheKey); if (cached && cached.expires > Date.now()) return cached.value as never; }
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
       const { client } = await getSession();
-      console.log(`Mireye MCP tool: ${tool}`);
+      record(tool === "mireye_lookup" ? "lookup" : tool === "mireye_fetch" ? "fetch" : tool === "mireye_ask" ? "ask" : "total");
       const result = await client.callTool({ name: tool, arguments: args }, undefined, { timeout: REQUEST_TIMEOUT });
       if (result.isError) {
         const message = decodeToolResult(result);
         const requestId = (result as { request_id?: string }).request_id;
         throw new Error(`Mireye MCP tool ${tool} failed: ${String(message)}${requestId ? ` (${requestId})` : ""}`);
       }
-      return decodeToolResult(result) as never;
+      const value = decodeToolResult(result); if (cacheKey) lookupCache.set(cacheKey, { expires: Date.now() + CACHE_TTL_MS, value }); return value as never;
     } catch (error) {
       console.error(`Mireye MCP tool ${tool} request failed`, error instanceof Error ? error.message : String(error));
     if (error instanceof UnauthorizedError) {
       console.warn(`Mireye MCP UnauthorizedError: ${error.message}`);
     }
       if (attempt === 0 && shouldRetry(error)) {
+        record("retries");
         await reconnect();
         continue;
       }
@@ -162,14 +175,15 @@ export async function mcpTool(tool: string, args: Record<string, unknown>): Prom
 }
 
 export async function mcpResource(uri: string) {
+  const cached = resourceCache.get(uri); if (cached && cached.expires > Date.now()) return cached.value;
   for (let attempt = 0; attempt < 2; attempt += 1) {
     try {
       const { client } = await getSession();
-      console.log(`Mireye MCP resource: ${uri}`);
-      return decodeResourceResult(await client.readResource({ uri }, { timeout: REQUEST_TIMEOUT }));
+      record(uri.endsWith("/fields") ? "catalog" : uri.endsWith("/presets") ? "presets" : "total"); const value = decodeResourceResult(await client.readResource({ uri }, { timeout: REQUEST_TIMEOUT })); resourceCache.set(uri, { expires: Date.now() + CACHE_TTL_MS, value }); return value;
     } catch (error) {
       console.error(`Mireye MCP resource ${uri} request failed`, error instanceof Error ? error.message : String(error));
       if (attempt === 0 && shouldRetry(error)) {
+        record("retries");
         await reconnect();
         continue;
       }
