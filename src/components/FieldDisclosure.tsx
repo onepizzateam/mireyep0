@@ -119,6 +119,18 @@ export default function FieldDisclosure({ score }: FieldDisclosureProps) {
           )}
 
           {/* Methodology Notes */}
+          {score.dataGaps.length > 0 && (
+            <div className="border-t pt-4 space-y-2">
+              <h4 className="text-sm font-semibold text-gray-700">Data Gaps</h4>
+              {score.dataGaps.map((gap, idx) => (
+                <div key={idx}>
+                  <p className="font-mono text-xs">• {gap.field}</p>
+                  <p className="text-xs text-gray-500 ml-3">Impact: {gap.impact} — {gap.assumption}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
           <div className="space-y-4 border-t pt-4">
             <h4 className="text-sm font-semibold text-gray-700">
               Methodology Notes

@@ -102,6 +102,8 @@ export interface MireyeFields {
 // ============================================================================
 
 export type SiteType = "urban" | "suburban" | "rural";
+export interface AgentFieldGap { field: string; impact: "high" | "medium" | "low"; assumption: string; }
+export interface AgentTopField { field: string; value: string; impact: "high" | "medium" | "low"; explanation: string; }
 
 export interface FieldContribution {
   fieldName: string;
@@ -135,7 +137,7 @@ export interface SiteScore {
   };
   permittingFriction: PermittingFriction;
   siteType: SiteType;
-  dataGaps: string[]; // list of null fields that affected scoring
+  dataGaps: AgentFieldGap[];
 }
 
 // ============================================================================
@@ -217,8 +219,19 @@ export interface ScoreResponse {
   leverageSummary: string[];
   rateComparison?: RateComparison;
   buyoutComparison?: BuyoutComparison;
-  dataGaps: string[];
+  dataGaps: AgentFieldGap[];
   processingMs: number;
+  reasoning: string;
+  intelligence?: IntelligenceLayers;
+}
+
+export interface DataCitation { source: string; url: string; retrievedAt: string; claim?: string; }
+export interface IntelligenceLayers {
+  bdc: { coverage: Record<string, unknown>[]; gapCarriers: string[]; error?: string; citations: DataCitation[] };
+  uls: { licenses: Record<string, unknown>[]; carrierNames: string[]; error?: string; citations: DataCitation[] };
+  opencellid: { cells: Record<string, unknown>[]; carriersPresent: string[]; error?: string; citations: DataCitation[] };
+  faa: { cases: Record<string, unknown>[]; hazardCount: number; approvedCount: number; error?: string; citations: DataCitation[] };
+  auction: { obligations: Record<string, unknown>[]; obligatedCarriers: string[]; error?: string; citations: DataCitation[] };
 }
 
 export type ScoreErrorCode =

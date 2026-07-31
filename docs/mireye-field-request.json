@@ -1,0 +1,8 @@
+{
+  "description": "Return the registered entity name for the nearest FCC ASR structure alongside its registration number, so SignalRent can distinguish professional tower owners from carrier-owned structures.",
+  "use_case": "Cell tower lease negotiation and competitive alternative analysis.",
+  "output_preference": { "value_kind": "string" },
+  "area_of_interest": { "level": "national", "names": [] },
+  "expected_volume": { "locations": 5000, "geography": "Continental US", "cadence": "recurring" },
+  "known_sources": [{ "name": "FCC ASR Registration Database", "url": "https://www.fcc.gov/uls/transactions/daily-weekly" }]
+}

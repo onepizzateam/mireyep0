@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import { AgentFieldGap } from "@/lib/types";
 
 interface DataGapBannerProps {
-  dataGaps: string[];
+  dataGaps: AgentFieldGap[];
 }
 
 export default function DataGapBanner({ dataGaps }: DataGapBannerProps) {
@@ -40,7 +41,7 @@ export default function DataGapBanner({ dataGaps }: DataGapBannerProps) {
         <div className="pl-7 border-t border-gray-200 pt-3 space-y-2 text-xs text-gray-700">
           {dataGaps.map((gap, idx) => (
             <p key={idx} className="font-mono">
-              • {gap}
+              • {gap.field} — Impact: {gap.impact} — {gap.assumption}
             </p>
           ))}
         </div>

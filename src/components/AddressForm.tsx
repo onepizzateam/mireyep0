@@ -2,9 +2,6 @@
 
 import { useState, FormEvent, useRef, useEffect } from "react";
 import { ScoreRequest } from "@/lib/types";
-import MapPin from "./MapPin";
-
-const MAPBOX_TOKEN = process.env.NEXT_PUBLIC_MAPBOX_TOKEN || "";
 
 interface AddressFormProps {
   onSubmit: (request: ScoreRequest) => void;
@@ -31,44 +28,18 @@ export default function AddressForm({ onSubmit, isLoading }: AddressFormProps) {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const suggestionsRef = useRef<HTMLDivElement>(null);
 
-  // Mapbox geocoder forward search
+  // Coordinates are resolved server-side by Mireye.
   const handleAddressSearch = async (searchText: string) => {
     setAddress(searchText);
     
-    if (!searchText.trim() || !MAPBOX_TOKEN) {
+    if (!searchText.trim()) {
       setAddressSuggestions([]);
       setShowSuggestions(false);
       return;
     }
 
-    try {
-      const response = await fetch(
-        `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(
-          searchText
-        )}.json?access_token=${MAPBOX_TOKEN}&country=us&limit=5`
-      );
-
-      if (!response.ok) {
-        console.error("Mapbox geocoding error");
-        return;
-      }
-
-      const data = await response.json();
-      interface MapboxFeature {
-        center: [number, number];
-        place_name: string;
-      }
-      const suggestions: GeocodeResult[] = data.features.map((feature: MapboxFeature) => ({
-        lat: feature.center[1],
-        lng: feature.center[0],
-        displayName: feature.place_name,
-      }));
-
-      setAddressSuggestions(suggestions);
-      setShowSuggestions(true);
-    } catch (error) {
-      console.error("Error fetching geocode suggestions:", error);
-    }
+    setAddressSuggestions([]);
+    setShowSuggestions(false);
   };
 
   // Select a suggestion and set it as the geocoded location
@@ -105,18 +76,13 @@ export default function AddressForm({ onSubmit, isLoading }: AddressFormProps) {
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
 
-    if (!confirmedLat || !confirmedLng) {
-      alert("Please geocode an address and place the marker on the map");
-      return;
-    }
-
     const request: ScoreRequest = {
       address: geocodedLocation?.displayName || address,
       carrier: carrier.trim() || undefined,
       offeredRate: offeredRate ? parseFloat(offeredRate) : undefined,
       buyoutAmount: buyoutAmount ? parseFloat(buyoutAmount) : undefined,
-      lat: confirmedLat,
-      lng: confirmedLng,
+      lat: confirmedLat ?? undefined,
+      lng: confirmedLng ?? undefined,
     };
 
     onSubmit(request);
@@ -161,17 +127,6 @@ export default function AddressForm({ onSubmit, isLoading }: AddressFormProps) {
           )}
         </div>
       </div>
-
-      {/* Map component - show after geocoding */}
-      {geocodedLocation && confirmedLat && confirmedLng && (
-        <div className="pt-4">
-          <MapPin
-            initialLat={confirmedLat}
-            initialLng={confirmedLng}
-            onCoordinateChange={handleCoordinateChange}
-          />
-        </div>
-      )}
 
       <div>
         <label
@@ -231,7 +186,7 @@ export default function AddressForm({ onSubmit, isLoading }: AddressFormProps) {
 
       <button
         type="submit"
-        disabled={isLoading || !confirmedLat || !confirmedLng}
+        disabled={isLoading}
         className="w-full bg-black hover:shadow-md disabled:opacity-60 text-white text-sm font-medium py-2 transition"
         style={{ borderRadius: "4px" }}
       >
