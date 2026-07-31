@@ -1,8 +1,25 @@
-import { IntelligenceLayers, DataCitation } from "@/lib/types";
+import type { IntelligenceLayers, DataCitation } from "@/lib/types";
+
+interface OpenCelliDCell {
+  mcc: string | number;
+  mnc: string | number;
+  carrier_name?: string;
+  lat?: number;
+  lon?: number;
+  averageSignal?: number;
+  samples?: number;
+  [key: string]: unknown;
+}
+
+interface FederalJsonResponse {
+  cells?: OpenCelliDCell[];
+  availability?: Record<string, unknown>[];
+  [key: string]: unknown;
+}
 
 const now = () => new Date().toISOString();
 const citation = (source: string, url: string): DataCitation => ({ source, url, retrievedAt: now() });
-async function json(url: string, init?: RequestInit): Promise<any> {
+async function json(url: string, init?: RequestInit): Promise<FederalJsonResponse> {
   const res = await fetch(url, { ...init, headers: { Accept: "application/json", ...(init?.headers ?? {}) }, signal: AbortSignal.timeout(8000) });
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json();
@@ -22,8 +39,8 @@ export async function fetchFederalLayers(lat: number, lng: number, county?: stri
   try {
     if (key) {
       const data = await json(`https://api.opencellid.org/v1/cell/getInArea?key=${encodeURIComponent(key)}&lat1=${lat - .01}&lon1=${lng - .01}&lat2=${lat + .01}&lon2=${lng + .01}`);
-      const cells = (data?.cells ?? []).map((c: any) => ({ ...c, carrier_name: c.carrier_name ?? `${c.mcc}-${c.mnc}` }));
-      out.opencellid = { cells, carriersPresent: [...new Set(cells.map((c: any) => c.carrier_name))] as string[], citations: [citation("OpenCelliD", "https://opencellid.org/")] };
+      const cells: OpenCelliDCell[] = (data?.cells ?? []).map((c: OpenCelliDCell) => ({ ...c, carrier_name: c.carrier_name ?? `${c.mcc}-${c.mnc}` }));
+      out.opencellid = { cells, carriersPresent: [...new Set(cells.map((c: OpenCelliDCell) => String(c.carrier_name ?? "")))], citations: [citation("OpenCelliD", "https://opencellid.org/")] };
     } else out.opencellid.error = "OPENCELLID_API_KEY not configured";
   } catch (e) { out.opencellid.error = String(e); }
   // These public datasets have different query contracts and are intentionally isolated;

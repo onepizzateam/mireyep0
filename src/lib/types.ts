@@ -102,7 +102,7 @@ export interface MireyeFields {
 // ============================================================================
 
 export type SiteType = "urban" | "suburban" | "rural";
-export interface AgentFieldGap { field: string; impact: "high" | "medium" | "low"; assumption: string; }
+export interface AgentFieldGap { field: string; impact: "high" | "medium" | "low"; assumption: string; includes: (value: string) => boolean; }
 export interface AgentTopField { field: string; value: string; impact: "high" | "medium" | "low"; explanation: string; }
 
 export interface FieldContribution {
@@ -239,6 +239,8 @@ export type ScoreErrorCode =
   | "MIREYE_ERROR"
   | "MIREYE_TIMEOUT"
   | "INVALID_INPUT"
+  | "RATE_LIMITED"
+  | "AGENT_ERROR"
   | "UNKNOWN";
 
 export interface ScoreErrorResponse {

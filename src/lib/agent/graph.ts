@@ -2,20 +2,34 @@ import { Annotation, StateGraph } from "@langchain/langgraph";
 import { ChatAnthropic } from "@langchain/anthropic";
 import { HumanMessage, SystemMessage } from "@langchain/core/messages";
 import { mcpResource, mcpTool } from "./mcp";
-import { ScoreResponse } from "@/lib/types";
+import type { ScoreResponse, IntelligenceLayers } from "@/lib/types";
 import { fetchFederalLayer } from "./federal";
+
+interface MireyeLocation { lat?: number; lng?: number; displayAddress?: string; label?: string; parcelGrade?: boolean; }
+interface MireyeLookupResponse {
+  disposition?: "clarify" | "no_match" | "ok";
+  candidates?: Array<{ label?: string }>;
+  location?: MireyeLocation;
+  parcelGrade?: boolean;
+  fields?: Record<string, unknown>;
+  data?: Record<string, unknown>;
+  content?: Record<string, unknown>;
+  structuredContent?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+interface CatalogEntry { name?: string; field?: string; description?: string; [key: string]: unknown; }
 
 export const SignalRentState = Annotation.Root({
   address: Annotation<string>(), lat: Annotation<number | undefined>(), lng: Annotation<number | undefined>(), carrier: Annotation<string | undefined>(), offeredRate: Annotation<number | undefined>(), buyoutAmount: Annotation<number | undefined>(),
-  resolvedLat: Annotation<number>(), resolvedLng: Annotation<number>(), displayAddress: Annotation<string>(), parcelGrade: Annotation<boolean>(), catalogSummary: Annotation<string>(), fetchedFields: Annotation<Record<string, unknown>>(), selectedFields: Annotation<string[]>(), intelligence: Annotation<any>({ reducer: (left, right) => ({ ...(left ?? {}), ...(right ?? {}) }), default: () => ({}) }), result: Annotation<ScoreResponse | null>(), error: Annotation<string | null>(),
+  resolvedLat: Annotation<number>(), resolvedLng: Annotation<number>(), displayAddress: Annotation<string>(), parcelGrade: Annotation<boolean>(), catalogSummary: Annotation<string>(), fetchedFields: Annotation<Record<string, unknown>>(), selectedFields: Annotation<string[]>(), intelligence: Annotation<Partial<IntelligenceLayers>>({ reducer: (left, right) => ({ ...(left ?? {}), ...(right ?? {}) }), default: () => ({}) }), result: Annotation<ScoreResponse | null>(), error: Annotation<string | null>(),
 });
 
 type State = typeof SignalRentState.State;
-const unwrap = (v: any): any => v?.content ?? v?.structuredContent ?? v?.data ?? v;
-const fields = (v: any): Record<string, unknown> => unwrap(v)?.fields ?? unwrap(v)?.data ?? unwrap(v) ?? {};
+const unwrap = (v: MireyeLookupResponse): MireyeLookupResponse => (v?.content ?? v?.structuredContent ?? v?.data ?? v) as MireyeLookupResponse;
+const fields = (v: MireyeLookupResponse): Record<string, unknown> => (unwrap(v)?.fields ?? unwrap(v)?.data ?? unwrap(v) ?? {}) as Record<string, unknown>;
 
 async function lookupNode(state: State) {
-  const response: any = unwrap(await mcpTool("mireye_lookup", { input: state.lat !== undefined && state.lng !== undefined ? `${state.lat},${state.lng}` : state.address }));
+  const response: MireyeLookupResponse = unwrap(await mcpTool("mireye_lookup", { input: state.lat !== undefined && state.lng !== undefined ? `${state.lat},${state.lng}` : state.address }) as MireyeLookupResponse);
   if (response?.disposition === "clarify") return { error: `Address is ambiguous: ${response.candidates?.[0]?.label} or ${response.candidates?.[1]?.label}` };
   if (response?.disposition === "no_match") return { error: "Address not found." };
   const location = response?.location ?? response;
@@ -24,9 +38,10 @@ async function lookupNode(state: State) {
 
 async function catalogNode() {
   const [rawFields, rawPresets] = await Promise.all([mcpResource("mireye://catalog/fields"), mcpResource("mireye://catalog/presets")]);
-  const value: any = unwrap(rawFields); const entries = value?.fields ?? value?.resources ?? value;
-  const lines = Array.isArray(entries) ? entries.map((x: any) => `${x.name ?? x.field}: ${String(x.description ?? "").split(".")[0]}`) : Object.entries(entries ?? {}).map(([k, x]: any) => `${k}: ${String(x?.description ?? x ?? "").split(".")[0]}`);
-  const presetText = JSON.stringify(unwrap(rawPresets));
+  const value = unwrap(rawFields as MireyeLookupResponse);
+  const raw = (value?.fields ?? value?.data ?? value) as CatalogEntry[] | Record<string, CatalogEntry> | null;
+  const lines: string[] = Array.isArray(raw) ? raw.map((x) => `${x.name ?? x.field ?? ""}: ${String(x.description ?? "").split(".")[0]}`) : Object.entries((raw as Record<string, CatalogEntry>) ?? {}).map(([k, x]) => `${k}: ${String(x?.description ?? x ?? "").split(".")[0]}`);
+  const presetText = JSON.stringify(unwrap(rawPresets as MireyeLookupResponse));
   return { catalogSummary: `${lines.join("\n").slice(0, 5900)}\nPresets: ${presetText.includes("cell_tower_siting") ? "cell_tower_siting" : "site_selection"}` };
 }
 
@@ -53,13 +68,13 @@ const auctionNode = (s: State) => federalNode(s, "auction");
 async function reasonNode(state: State) {
   const model = new ChatAnthropic({ model: "claude-haiku-4-5", temperature: 0, apiKey: process.env.ANTHROPIC_API_KEY });
   const prompt = `Site address: ${state.displayAddress}\nCoordinates: ${state.resolvedLat}, ${state.resolvedLng}\nParcel-grade: ${state.parcelGrade}\nCarrier: ${state.carrier ?? "unknown"}\nOffered rate: ${state.offeredRate ?? "not provided"}\nBuyout: ${state.buyoutAmount ?? "not provided"}\nCatalog:\n${state.catalogSummary}\nMireye fields:\n${JSON.stringify(state.fetchedFields, null, 2)}\nFederal intelligence layers (missing/error values must be acknowledged, never invented):\n${JSON.stringify(state.intelligence ?? {}, null, 2)}`;
-  const message: any = await model.invoke([new SystemMessage(system), new HumanMessage(prompt)]); const text = String(message.content); const reasoning = text.match(/<reasoning>([\s\S]*?)<\/reasoning>/i)?.[1]?.trim() ?? ""; const output = text.match(/<output>([\s\S]*?)<\/output>/i)?.[1];
+  const message = await model.invoke([new SystemMessage(system), new HumanMessage(prompt)]); const text = String(message.content); const reasoning = text.match(/<reasoning>([\s\S]*?)<\/reasoning>/i)?.[1]?.trim() ?? ""; const output = text.match(/<output>([\s\S]*?)<\/output>/i)?.[1];
   if (!output) throw new Error("LLM output did not contain an output block");
   return { result: { ...JSON.parse(output), reasoning, intelligence: state.intelligence } as ScoreResponse };
 }
 
 async function validateNode(state: State) {
-  const r: any = state.result; const checks = [[typeof r?.score?.baseline === "number" && r.score.baseline >= 0 && r.score.baseline <= 100, "score.baseline"], [typeof r?.score?.composite === "number", "score.composite"], [r?.benchmark?.monthlyRange?.min < r?.benchmark?.monthlyRange?.max && r.benchmark.monthlyRange.min > 0, "benchmark range"], [Array.isArray(r?.leverageSummary?.paragraphs) && r.leverageSummary.paragraphs.length >= 1, "leverage paragraphs"], [Array.isArray(r?.topFields) && r.topFields.length >= 3, "topFields"]]; const failed = checks.find(([ok]) => !ok); return failed ? { error: `Validation failed: ${failed[1]}`, result: null } : { result: r };
+  const r = state.result; const checks: Array<[boolean, string]> = [[typeof r?.score?.baseline === "number" && r.score.baseline >= 0 && r.score.baseline <= 100, "score.baseline"], [typeof r?.score?.composite === "number", "score.composite"], [(r?.benchmark?.monthlyRange?.min ?? 0) < (r?.benchmark?.monthlyRange?.max ?? 0) && (r?.benchmark?.monthlyRange?.min ?? 0) > 0, "benchmark range"], [Array.isArray(r?.leverageSummary) && r.leverageSummary.length >= 1, "leverage paragraphs"]]; const failed = checks.find(([ok]) => !ok); return failed ? { error: `Validation failed: ${failed[1]}`, result: null } : { result: r };
 }
 
 const graph = new StateGraph(SignalRentState).addNode("lookup", lookupNode).addNode("catalog", catalogNode).addNode("fetch", fetchNode).addNode("bdc", bdcNode).addNode("uls", ulsNode).addNode("opencellid", opencellidNode).addNode("faa", faaNode).addNode("auction", auctionNode).addNode("reason", reasonNode).addNode("validate", validateNode).addEdge("__start__", "lookup").addConditionalEdges("lookup", (s) => s.error ? "__end__" : "catalog").addEdge("catalog", "fetch").addEdge("fetch", "bdc").addEdge("fetch", "uls").addEdge("fetch", "opencellid").addEdge("fetch", "faa").addEdge("fetch", "auction").addEdge("bdc", "reason").addEdge("uls", "reason").addEdge("opencellid", "reason").addEdge("faa", "reason").addEdge("auction", "reason").addEdge("reason", "validate").addEdge("validate", "__end__").compile();

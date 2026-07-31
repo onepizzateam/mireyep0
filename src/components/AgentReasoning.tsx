@@ -1,1 +1,4 @@
-export function AgentReasoning({ reasoning }: { reasoning: string }) { return <div className="w-full max-w-2xl mx-auto bg-white border border-gray-200 rounded-lg shadow-sm"><div className="px-6 py-4 border-b"><h3 className="text-sm font-semibold text-gray-700">Agent Reasoning</h3><p className="text-xs text-gray-500 font-mono mt-1">How the valuation engine interpreted this site's data</p></div><div className="px-6 py-4"><p className="text-xs text-gray-700 leading-relaxed whitespace-pre-wrap font-mono">{reasoning}</p></div></div>; }
+export function AgentReasoning({ reasoning }: { reasoning?: string }) {
+  if (!reasoning) return null;
+  return <div className="w-full max-w-2xl mx-auto bg-white border border-gray-200 rounded-lg shadow-sm"><div className="px-6 py-4 border-b"><h3 className="text-sm font-semibold text-gray-700">Agent Reasoning</h3><p className="text-xs text-gray-500 font-mono mt-1">How the valuation engine interpreted this site&apos;s data</p></div><div className="px-6 py-4"><p className="text-xs text-gray-700 leading-relaxed whitespace-pre-wrap font-mono">{reasoning}</p></div></div>;
+}

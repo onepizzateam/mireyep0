@@ -851,7 +851,12 @@ export function computeSiteScore(fields: MireyeFields): SiteScore {
       flags,
     },
     siteType,
-    dataGaps: Array.from(allDataGaps),
+    dataGaps: Array.from(allDataGaps).map((field) => ({
+      field,
+      impact: "medium" as const,
+      assumption: "A fallback value was used because this field was unavailable.",
+      includes: (value: string) => field.includes(value),
+    })),
   };
 
   return siteScore;

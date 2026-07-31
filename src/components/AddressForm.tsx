@@ -52,12 +52,6 @@ export default function AddressForm({ onSubmit, isLoading }: AddressFormProps) {
     setShowSuggestions(false);
   };
 
-  // Handle map coordinate change (user drags pin)
-  const handleCoordinateChange = (lat: number, lng: number) => {
-    setConfirmedLat(lat);
-    setConfirmedLng(lng);
-  };
-
   // Close suggestions on click outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
