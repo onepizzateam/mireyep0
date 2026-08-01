@@ -184,7 +184,7 @@ export default function AddressForm({ onSubmit, onSmokeTest, isLoading }: Addres
             onChange={(e) => handleAddressChange(e.target.value)}
             disabled={isLoading}
             autoComplete="off"
-            className="w-full px-3 py-2 border border-gray-300 rounded text-sm font-mono focus:outline-none focus:ring-1 focus:ring-black disabled:bg-gray-50"
+            className="w-full px-3 py-2 border border-gray-300 rounded text-sm font-mono text-gray-900 placeholder:text-gray-500 focus:outline-none focus:ring-1 focus:ring-black disabled:bg-gray-50"
           />
           {showSuggestions && suggestions.length > 0 && (
             <div className="absolute top-full left-0 right-0 bg-white border border-gray-300 border-t-0 rounded-b shadow-lg z-10">
