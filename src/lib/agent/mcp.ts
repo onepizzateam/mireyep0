@@ -22,8 +22,11 @@ function record(kind: keyof McpUsage) { if (activeUsage) { activeUsage[kind] += 
 export function beginMcpUsage() { activeUsage = emptyUsage(); return () => { const result = activeUsage ?? emptyUsage(); activeUsage = undefined; return result; }; }
 
 function getBearerToken() {
-  const token = process.env.MIREYE_MCP_ACCESS_TOKEN ?? process.env.MIREYE_BEARER_TOKEN;
-  if (!token) throw new Error("MIREYE_BEARER_TOKEN missing");
+  const token = process.env.MIREYE_MCP_ACCESS_TOKEN
+    ?? process.env.MIREYE_BEARER_TOKEN
+    ?? process.env.MIREYE_API_TOKEN
+    ?? process.env.MIREYE_API_KEY;
+  if (!token) throw new Error("Mireye bearer token missing (set MIREYE_MCP_ACCESS_TOKEN or MIREYE_API_TOKEN)");
   return token;
 }
 
@@ -33,7 +36,7 @@ function isAuthenticationError(error: unknown) {
 }
 
 function shouldRetry(error: unknown) {
-  if (error instanceof Error && error.message === "MIREYE_BEARER_TOKEN missing") return false;
+  if (error instanceof Error && error.message.startsWith("Mireye bearer token missing")) return false;
   const message = error instanceof Error ? error.message : String(error);
   return !/credits_exhausted|quota|rate.?limit|validation|invalid|unauthorized|authentication|\b401\b|\b403\b/i.test(message);
 }
@@ -47,7 +50,11 @@ async function createSession(): Promise<Session> {
         token_endpoint_auth_method: "none",
         grant_types: ["client_credentials"],
       },
-      clientInformation: async () => undefined,
+      // The access token is provisioned out-of-band in Vercel. Returning
+      // stable client information prevents the SDK from attempting OAuth
+      // dynamic registration, which requires a writable client store that a
+      // serverless function does not have.
+      clientInformation: async () => ({ client_id: "signalrent" }),
       tokens: async () => {
         return {
           access_token: getBearerToken(),
