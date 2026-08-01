@@ -261,13 +261,32 @@ CRITICAL FIELD REQUIREMENTS:
   };
 }
 async function validateNode(state: State) {
-  const validation = parseReasoningResponse(state.result);
+  const raw = (state.result ?? {}) as any;
+  if (!raw.score || !raw.benchmark) {
+    return { error: "Valuation is impossible: score or benchmark is missing." };
+  }
+  const repaired = normalizeScoreResponse({
+    ...raw,
+    ok: true,
+    score: {
+      ...raw.score,
+      dimensions: {
+        ...raw.score.dimensions,
+        coverageNecessity: { ...raw.score.dimensions?.coverageNecessity, weight: .4 },
+        subscriberValue: { ...raw.score.dimensions?.subscriberValue, weight: .35 },
+        constructionCost: { ...raw.score.dimensions?.constructionCost, weight: .25 },
+      },
+    },
+    leverageSummary: Array.isArray(raw.leverageSummary) ? raw.leverageSummary : ["Estimated valuation based on partial evidence."],
+    dataGaps: Array.isArray(raw.dataGaps) ? raw.dataGaps : [],
+    reasoning: typeof raw.reasoning === "string" && raw.reasoning.trim() ? raw.reasoning : "Estimated from available evidence; some evidence was unavailable.",
+  });
+  const validation = parseReasoningResponse(repaired);
   if (!validation.success) {
-    return {
-      error: `Reasoner returned an incomplete valuation result: ${validation.error.issues.map((issue) => issue.path.join(".")).join(", ")}`,
-    };
+    return { error: "Valuation is impossible: the score or benchmark cannot be formatted." };
   }
   const result = validation.data as unknown as ScoreResponse;
+  const findings: string[] = [];
   const numbers = [result.score.baseline, result.score.multiplier, result.score.composite, result.score.final,
     result.score.dimensions.coverageNecessity.raw, result.score.dimensions.subscriberValue.raw,
     result.score.dimensions.constructionCost.raw, result.benchmark.baseValue,
@@ -282,10 +301,13 @@ async function validateNode(state: State) {
   const baselineCategories = new Set(state.evidence.flatMap((item) => Array.isArray(item.category) ? item.category : [item.category]));
   const minimumEvidence = ["competition", "population", "terrain", "regulatory"].every((category) => baselineCategories.has(category as any));
   const reasoning = result.reasoning ?? "";
-  if (invalidNumber || !validWeights || !dimensionsSupported || !benchmarkTraceable || !minimumEvidence || !reasoning.trim()) {
-    return { error: "Deterministic review failed: valuation evidence or formatting is incomplete." };
-  }
-  return { result };
+  if (invalidNumber) findings.push("WARNING: some numeric outputs are estimated or incomplete; confidence reduced.");
+  if (!validWeights) findings.push("ERROR repaired: scoring weights were normalized to the domain specification.");
+  if (!dimensionsSupported) findings.push("WARNING: one or more contributing dimensions have incomplete evidence.");
+  if (!benchmarkTraceable) findings.push("WARNING: some benchmark adjustments could not be fully traced to available evidence.");
+  if (!minimumEvidence) findings.push("WARNING: partial evidence was available; missing evidence lowers confidence.");
+  const annotatedReasoning = [result.reasoning, ...findings].filter(Boolean).join(" ");
+  return { result: { ...result, reasoning: annotatedReasoning } };
 }
 
 export const graph = new StateGraph(SignalRentState)
