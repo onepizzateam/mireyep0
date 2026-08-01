@@ -12,6 +12,43 @@ SignalRent tells US property owners what their cell tower lease is actually wort
 - Negotiating position analysis
 - Optional rate comparison and buyout analysis
 
+## Architecture: deterministic score, agentic evidence and reasoning
+
+SignalRent is a hybrid system. The numeric Site Score remains deterministic and locked: the same Mireye fields, OpenCellID carrier inputs, weights, and scoring rules produce the same score. Gemini does not rewrite those score numbers.
+
+Gemini operates around that stable scoring core. It reads the live Mireye catalogue, selects priorities, creates site-specific hypotheses, interprets the completed score and evidence registry, derives the market benchmark, and writes negotiation guidance. It may adjust the explanation, benchmark range, leverage summary, and data-gap assumptions, but the locked score remains the source of truth for the score itself.
+
+```mermaid
+flowchart TD
+    A[Address and user context] --> B[Resolve coordinates]
+    B --> C[Read live Mireye catalogue]
+    C --> D[Gemini planner: priorities and hypotheses]
+    D --> E[Evidence collection]
+    E --> F[Mireye fields and OpenCellID cells/carriers]
+    F --> G[Targeted gap filling]
+    G --> H[Deterministic Site Score]
+    H --> I[Gemini reasoner: score-aware interpretation]
+    I --> J[Validated valuation and negotiation guidance]
+    K[Assistant question] --> L[Catalogue-driven field matching]
+    L --> M[Targeted Mireye fetch]
+    M --> N[Fresh answer context]
+```
+
+### Initial valuation flow
+
+1. The planner loads the live Mireye field catalogue and asks Gemini for site-specific priorities and hypotheses.
+2. All fields required by the deterministic scorer and benchmark logic are preserved, while planner-selected fields and critical competition/subscriber fields are included.
+3. Mireye evidence and OpenCellID data are collected. OpenCellID contributes nearby cells and carrier presence for tower-capacity interpretation.
+4. The assessor identifies high-impact gaps and can issue targeted `mireye_ask` follow-ups.
+5. The deterministic scorer computes the locked score using fixed weights: Coverage Necessity 40%, Subscriber Value 35%, Construction Cost 25%.
+6. The reasoner receives the locked score, raw fields, evidence registry, OpenCellID data, hypotheses, and gap-fill results before producing the benchmark and landlord-facing interpretation.
+
+### Conversational follow-ups
+
+The assistant does not treat the initial valuation as the complete knowledge base. For a question such as “Is temperature a factor?”, it uses the live catalogue to identify relevant fields, fetches only missing fields from Mireye, and answers using that fresh evidence. This supports new Mireye fields and future data providers without requiring a hard-coded question-to-field map.
+
+The same boundary applies to scoring: deterministic numeric outputs are reproducible; agentic interpretation is evidence-driven and extensible. New fields can inform hypotheses, benchmark explanations, data-gap assumptions, and assistant answers without silently changing the score formula.
+
 ## Environment Setup
 
 ### Required: Mireye API Key & Mapbox Token
