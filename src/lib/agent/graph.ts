@@ -287,7 +287,7 @@ async function scoreNode(state: State) {
   const saturation = computeTowerSaturation(structureType, carriersPresent);
   return { deterministicScore: computeSiteScore(fields, carriersPresent, structureType), rawFields: fields, opencellData, towerSaturationSummary: saturation ? saturationLeverageSentence(saturation) : "" };
 }
-export function parseModelResponse(content: unknown) {
+export function parseModelResponse(content: unknown, lockedScore?: SiteScore | null) {
   const text = Array.isArray(content)
     ? content
         .map((part: any) =>
@@ -300,9 +300,20 @@ export function parseModelResponse(content: unknown) {
   const candidate = tagged ?? fenced ?? text.trim();
   if (!candidate) throw new Error("Reasoner returned empty text");
   const extractReasoning = () => text.match(/<reasoning>([\s\S]*?)<\/reasoning>/i)?.[1]?.trim() ?? "";
+  const lockScore = (value: any) => lockedScore
+    ? {
+        ...value,
+        score: {
+          ...value?.score,
+          ...lockedScore,
+          dimensions: lockedScore.dimensions,
+          permittingFriction: lockedScore.permittingFriction,
+        },
+      }
+    : value;
   const validateCandidate = (value: unknown) => {
     const raw = value as any;
-    const parsed = raw?.score ? raw : raw?.result?.score ? raw.result : raw?.output?.score ? raw.output : raw;
+    const parsed = lockScore(raw?.score ? raw : raw?.result?.score ? raw.result : raw?.output?.score ? raw.output : raw);
     if (!parsed.ok) parsed.ok = true;
     const normalized = normalizeScoreResponse(parsed) as Record<string, unknown>;
     const validation = parseReasoningResponse(normalized);
@@ -312,7 +323,7 @@ export function parseModelResponse(content: unknown) {
 
   try {
     const raw = JSON.parse(candidate);
-    const parsed = raw?.score ? raw : raw?.result?.score ? raw.result : raw?.output?.score ? raw.output : raw;
+    const parsed = lockScore(raw?.score ? raw : raw?.result?.score ? raw.result : raw?.output?.score ? raw.output : raw);
     // Inject ok: true if missing — the model won't return it but our schema requires it
     if (!parsed.ok) parsed.ok = true;
     const normalized = normalizeScoreResponse(parsed) as Record<string, unknown>;
@@ -423,7 +434,7 @@ BENCHMARK GUIDANCE — Willis Tower Chicago calibration: 442m building, urban, h
     new SystemMessage(contract),
     new HumanMessage(promptWithRequirement),
   ]);
-  let { parsed, reasoning } = parseModelResponse(message.content);
+  let { parsed, reasoning } = parseModelResponse(message.content, state.deterministicScore);
   if (!parsed.leverageSummary) {
     const repair = await model.invoke([
       new SystemMessage(
@@ -433,7 +444,7 @@ BENCHMARK GUIDANCE — Willis Tower Chicago calibration: 442m building, urban, h
         JSON.stringify({ valuation: parsed, evidence: state.evidence }),
       ),
     ]);
-    ({ parsed, reasoning } = parseModelResponse(repair.content));
+    ({ parsed, reasoning } = parseModelResponse(repair.content, state.deterministicScore));
   }
   return {
     result: {
