@@ -18,10 +18,10 @@ export default function LeverageSummary({ summary }: LeverageSummaryProps) {
         borderRadius: '4px'
       }}
     >
-      <h3 className="text-xs font-medium text-gray-600 uppercase">Negotiating Position</h3>
+      <h3 className="text-xs font-medium text-gray-900 uppercase">Negotiating Position</h3>
       <div className="space-y-2">
         {summary.map((sentence, idx) => (
-          <p key={idx} className="text-sm text-gray-700">
+          <p key={idx} className="text-sm text-gray-900">
             {sentence}
           </p>
         ))}

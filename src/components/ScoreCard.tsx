@@ -13,7 +13,7 @@ export default function ScoreCard({ score }: ScoreCardProps) {
       {/* Primary: Baseline Score (0–100) */}
       <div className="flex items-baseline justify-between">
         <div>
-          <h3 className="text-xs font-medium text-gray-600 uppercase mb-2">Site Score</h3>
+          <h3 className="text-xs font-medium text-gray-900 uppercase mb-2">Site Score</h3>
           <div className="flex items-baseline gap-1">
             <p className="text-5xl font-mono font-bold" style={{color: '#FF6600'}}>
               {displayNumber(score.baseline)}
@@ -23,7 +23,7 @@ export default function ScoreCard({ score }: ScoreCardProps) {
           
           {/* Secondary: Leverage-adjusted composite (unclamped) */}
           <p className="text-sm font-mono text-gray-500 mt-2">
-            Leverage-adjusted: <span className="font-bold text-gray-700">{displayNumber(score.composite)}</span>
+            Leverage-adjusted: <span className="font-bold text-gray-900">{displayNumber(score.composite)}</span>
             <span className="text-xs text-gray-400"> (unclamped)</span>
           </p>
           
@@ -51,12 +51,12 @@ export default function ScoreCard({ score }: ScoreCardProps) {
 
       {/* Dimension Scores */}
       <div className="space-y-3 border-t pt-4">
-        <h4 className="text-xs font-medium text-gray-600 uppercase">Dimension Breakdown</h4>
+        <h4 className="text-xs font-medium text-gray-900 uppercase">Dimension Breakdown</h4>
 
         {/* Dimension 1 */}
         <div>
           <div className="flex justify-between items-center mb-1">
-            <span className="text-xs font-medium text-gray-700">
+            <span className="text-xs font-medium text-gray-900">
               {displayText(score.dimensions.coverageNecessity.label)}
             </span>
             <span className="text-xs font-mono text-gray-900">
@@ -80,7 +80,7 @@ export default function ScoreCard({ score }: ScoreCardProps) {
         {/* Dimension 2 */}
         <div>
           <div className="flex justify-between items-center mb-1">
-            <span className="text-xs font-medium text-gray-700">
+            <span className="text-xs font-medium text-gray-900">
               {displayText(score.dimensions.subscriberValue.label)}
             </span>
             <span className="text-xs font-mono text-gray-900">
@@ -104,7 +104,7 @@ export default function ScoreCard({ score }: ScoreCardProps) {
         {/* Dimension 3 */}
         <div>
           <div className="flex justify-between items-center mb-1">
-            <span className="text-xs font-medium text-gray-700">
+            <span className="text-xs font-medium text-gray-900">
               {displayText(score.dimensions.constructionCost.label)}
             </span>
             <span className="text-xs font-mono text-gray-900">
@@ -129,7 +129,7 @@ export default function ScoreCard({ score }: ScoreCardProps) {
       {/* Site Type */}
       <div className="border-t pt-4 flex justify-start">
         <div>
-          <p className="text-xs font-medium text-gray-600 uppercase">Site Type</p>
+          <p className="text-xs font-medium text-gray-900 uppercase">Site Type</p>
           <p className="text-sm font-mono text-gray-900 capitalize mt-1">{displayText(score.siteType)}</p>
         </div>
       </div>

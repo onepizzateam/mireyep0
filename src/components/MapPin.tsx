@@ -98,11 +98,11 @@ export default function MapPin({
           borderRadius: "4px",
         }}
       />
-      <p className="text-xs font-mono text-gray-600 text-center">
+      <p className="text-xs font-mono text-gray-900 text-center">
         {formatCoordinate(currentLat, true)}, {formatCoordinate(currentLng, false)} —{" "}
         <span className="text-gray-500">drag to adjust</span>
       </p>
-      <p className="text-xs text-gray-600 text-center">
+      <p className="text-xs text-gray-900 text-center">
         Drag the pin to the exact location — tower leases are typically signed on parcel corners near roads, not address centroids.
       </p>
     </div>

@@ -45,10 +45,10 @@ export default function FieldDisclosure({ score }: FieldDisclosureProps) {
         onClick={() => setExpanded(!expanded)}
         className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 transition"
       >
-        <h3 className="text-sm font-semibold text-gray-700">
+        <h3 className="text-sm font-semibold text-gray-900">
           How We Calculated This
         </h3>
-        <span className="text-lg font-bold text-gray-600">
+        <span className="text-lg font-bold text-gray-900">
           {expanded ? "−" : "+"}
         </span>
       </button>
@@ -59,23 +59,23 @@ export default function FieldDisclosure({ score }: FieldDisclosureProps) {
           {/* Top Contributing Fields */}
           {allFields.length > 0 && (
             <div>
-              <h4 className="text-sm font-semibold text-gray-700 mb-3">
+              <h4 className="text-sm font-semibold text-gray-900 mb-3">
                 Top Contributing Fields
               </h4>
               <div className="overflow-x-auto">
                 <table className="w-full text-sm border-collapse">
                   <thead>
                     <tr className="border-b border-gray-200">
-                      <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600">
+                      <th className="text-left py-2 px-3 text-xs font-semibold text-gray-900">
                         Field
                       </th>
-                      <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600">
+                      <th className="text-left py-2 px-3 text-xs font-semibold text-gray-900">
                         Value
                       </th>
-                      <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600">
+                      <th className="text-left py-2 px-3 text-xs font-semibold text-gray-900">
                         Impact
                       </th>
-                      <th className="text-left py-2 px-3 text-xs font-semibold text-gray-600">
+                      <th className="text-left py-2 px-3 text-xs font-semibold text-gray-900">
                         Explanation
                       </th>
                     </tr>
@@ -83,10 +83,10 @@ export default function FieldDisclosure({ score }: FieldDisclosureProps) {
                   <tbody>
                     {allFields.map((field, idx) => (
                       <tr key={idx} className="border-b border-gray-100">
-                        <td className="py-3 px-3 text-xs font-mono text-gray-700">
+                        <td className="py-3 px-3 text-xs font-mono text-gray-900">
                           {displayFieldName(field)}
                         </td>
-                        <td className="py-3 px-3 text-xs text-gray-600">
+                        <td className="py-3 px-3 text-xs text-gray-900">
                           {field.value === null || field.value === undefined
                             ? <span className="text-gray-400 italic">missing</span>
                             : typeof field.value === "boolean"
@@ -112,7 +112,7 @@ export default function FieldDisclosure({ score }: FieldDisclosureProps) {
                             {displayText(field.impact)}
                           </span>
                         </td>
-                        <td className="py-3 px-3 text-xs text-gray-600">
+                        <td className="py-3 px-3 text-xs text-gray-900">
                           {displayText(field.explanation)}
                         </td>
                       </tr>
@@ -126,7 +126,7 @@ export default function FieldDisclosure({ score }: FieldDisclosureProps) {
           {/* Methodology Notes */}
           {score.dataGaps.length > 0 && (
             <div className="border-t pt-4 space-y-2">
-              <h4 className="text-sm font-semibold text-gray-700">Data Gaps</h4>
+              <h4 className="text-sm font-semibold text-gray-900">Data Gaps</h4>
               {score.dataGaps.map((gap, idx) => (
                 <div key={idx}>
                   <p className="font-mono text-xs">• {gap.field}</p>
@@ -137,15 +137,15 @@ export default function FieldDisclosure({ score }: FieldDisclosureProps) {
           )}
 
           <div className="space-y-4 border-t pt-4">
-            <h4 className="text-sm font-semibold text-gray-700">
+            <h4 className="text-sm font-semibold text-gray-900">
               Methodology Notes
             </h4>
             {disclosures.map((disclosure, idx) => (
               <div key={idx} className="bg-gray-50 p-4 rounded">
-                <p className="text-xs font-semibold text-gray-700 mb-2">
+                <p className="text-xs font-semibold text-gray-900 mb-2">
                   {disclosure.title}
                 </p>
-                <p className="text-xs text-gray-600 leading-relaxed">
+                <p className="text-xs text-gray-900 leading-relaxed">
                   {disclosure.text}
                 </p>
               </div>

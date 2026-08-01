@@ -172,7 +172,7 @@ export default function AddressForm({ onSubmit, onSmokeTest, isLoading }: Addres
   return (
     <form onSubmit={handleSubmit} className="w-full max-w-2xl mx-auto space-y-3">
       <div>
-        <label htmlFor="address" className="block text-xs font-medium text-gray-700 mb-1">
+        <label htmlFor="address" className="block text-xs font-medium text-gray-900 mb-1">
           Address *
         </label>
         <div className="relative" ref={suggestionsRef}>
@@ -193,7 +193,7 @@ export default function AddressForm({ onSubmit, onSmokeTest, isLoading }: Addres
                   key={s.id}
                   type="button"
                   onClick={() => handleSelectSuggestion(s)}
-                  className="w-full text-left px-3 py-2 text-sm font-mono text-gray-700 hover:bg-gray-100 border-b border-gray-200 last:border-b-0"
+                  className="w-full text-left px-3 py-2 text-sm font-mono text-gray-900 hover:bg-gray-100 border-b border-gray-200 last:border-b-0"
                 >
                   {s.properties.full_address ?? s.properties.place_formatted ?? s.properties.name}
                 </button>
@@ -223,7 +223,7 @@ export default function AddressForm({ onSubmit, onSmokeTest, isLoading }: Addres
       )}
 
       <div>
-        <label htmlFor="carrier" className="block text-xs font-medium text-gray-700 mb-1">
+        <label htmlFor="carrier" className="block text-xs font-medium text-gray-900 mb-1">
           Carrier / Tower Company (optional)
         </label>
         <input
@@ -238,7 +238,7 @@ export default function AddressForm({ onSubmit, onSmokeTest, isLoading }: Addres
       </div>
 
       <div>
-        <label htmlFor="offeredRate" className="block text-xs font-medium text-gray-700 mb-1">
+        <label htmlFor="offeredRate" className="block text-xs font-medium text-gray-900 mb-1">
           Current or offered monthly rate (optional)
         </label>
         <input
@@ -254,7 +254,7 @@ export default function AddressForm({ onSubmit, onSmokeTest, isLoading }: Addres
       </div>
 
       <div>
-        <label htmlFor="buyoutAmount" className="block text-xs font-medium text-gray-700 mb-1">
+        <label htmlFor="buyoutAmount" className="block text-xs font-medium text-gray-900 mb-1">
           Buyout offer (optional)
         </label>
         <input

@@ -109,7 +109,7 @@ export default function Home() {
           <h1 className="text-4xl font-bold text-gray-900 mb-1">
             Cell tower lease valuation.
           </h1>
-          <p className="text-base text-gray-600 font-mono">
+          <p className="text-base text-gray-900 font-mono">
             One address, 60 federal data points, a data-backed estimate and a read on your negotiating leverage.
           </p>
         </div>
@@ -119,7 +119,7 @@ export default function Home() {
       <main className="max-w-4xl mx-auto px-4 py-12 sm:px-6 lg:px-8">
         {/* Form Section */}
         <div className="mb-12">
-          <p className="text-sm text-gray-600 font-mono text-center mb-6">Enter an address to run a site valuation.</p>
+          <p className="text-sm text-gray-900 font-mono text-center mb-6">Enter an address to run a site valuation.</p>
           <AddressForm onSubmit={handleScoreRequest} onSmokeTest={handleSmokeTest} isLoading={isLoading} />
         </div>
 
@@ -134,7 +134,7 @@ export default function Home() {
         {/* Loading Skeleton */}
         {isLoading && (
           <div className="w-full max-w-2xl mx-auto text-center py-8">
-            <p className="text-sm font-mono text-gray-600">Fetching site data...</p>
+            <p className="text-sm font-mono text-gray-900">Fetching site data...</p>
           </div>
         )}
 
@@ -143,11 +143,11 @@ export default function Home() {
           <div className="space-y-8">
             {/* Address Display */}
             <div className="max-w-2xl mx-auto">
-              <p className="text-sm text-gray-600">
+              <p className="text-sm text-gray-900">
                 <strong>Address:</strong> {results.displayAddress}
               </p>
               {results.carrier && (
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-gray-900">
                   <strong>Carrier:</strong> {results.carrier}
                 </p>
               )}
@@ -179,18 +179,18 @@ export default function Home() {
             {/* Buyout Comparison */}
             {results.buyoutComparison && (
               <div className="w-full max-w-2xl mx-auto bg-white border border-gray-200 p-6 space-y-3" style={{borderRadius: '4px'}}>
-                <h3 className="text-xs font-medium text-gray-600 uppercase">
+                <h3 className="text-xs font-medium text-gray-900 uppercase">
                   Buyout Analysis
                 </h3>
                 <div className="space-y-2">
-                  <p className="text-sm text-gray-700">
+                  <p className="text-sm text-gray-900">
                     <span className="font-mono">Implied Multiple:</span>{" "}
                     {results.buyoutComparison.impliedMultiple.toFixed(1)}× annual rent
                   </p>
-                  <p className="text-sm text-gray-700">
+                  <p className="text-sm text-gray-900">
                     <span className="font-mono">Fair Value:</span> ${results.buyoutComparison.fairValueMin.toLocaleString(undefined, { maximumFractionDigits: 0 })} – ${results.buyoutComparison.fairValueMax.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                   </p>
-                  <p className="text-sm text-gray-700 mt-3 font-mono">
+                  <p className="text-sm text-gray-900 mt-3 font-mono">
                     {results.buyoutComparison.message}
                   </p>
                 </div>
@@ -215,7 +215,7 @@ export default function Home() {
               <h3 className="text-sm font-semibold text-gray-900">
                 Full report — $49
               </h3>
-              <p className="text-xs text-gray-600 font-mono">
+              <p className="text-xs text-gray-900 font-mono">
                 Field-by-field breakdown, comprehensive data analysis, and negotiation strategy derived from your site&apos;s highest-impact data points.
               </p>
               <button
@@ -237,7 +237,7 @@ export default function Home() {
       {/* Footer */}
       <footer className="bg-white border-t border-gray-200 py-8 mt-16">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-          <p className="text-xs text-gray-600 font-mono text-center">
+          <p className="text-xs text-gray-900 font-mono text-center">
             Built on Mireye. Data sourced from FCC ASR, USDA SSURGO, FEMA NFHL, USFWS NWI, and 12 other federal datasets. Not a substitute for professional appraisal.
           </p>
         </div>

@@ -25,12 +25,12 @@ export default function BenchmarkBand({
   return (
     <div className="w-full max-w-2xl mx-auto bg-white border border-gray-200 p-6 space-y-6" style={{borderRadius: '4px'}}>
       <div>
-        <h3 className="text-xs font-medium text-gray-600 uppercase mb-3">Market Benchmark Range</h3>
+        <h3 className="text-xs font-medium text-gray-900 uppercase mb-3">Market Benchmark Range</h3>
         <p className="text-xs text-gray-500 mb-4 font-mono">{benchmark.siteType.toUpperCase()} · {benchmark.scoreBand === "high" ? "High" : benchmark.scoreBand === "mid" ? "Moderate" : "Limited"} leverage</p>
 
         {/* Visual band */}
         <div className="relative mb-6">
-          <div className="flex justify-between text-xs font-mono text-gray-700 mb-2">
+          <div className="flex justify-between text-xs font-mono text-gray-900 mb-2">
             <span>${displayNumber(min)}/mo</span>
             <span>${displayNumber(max)}/mo</span>
           </div>
@@ -66,7 +66,7 @@ export default function BenchmarkBand({
         </div>
 
         {/* Calibration note */}
-        <p className="text-xs text-gray-600 border-t pt-4 font-mono">
+        <p className="text-xs text-gray-900 border-t pt-4 font-mono">
           {displayText(benchmark.calibrationNote, "Insufficient evidence for calibration details.")}
         </p>
       </div>
@@ -74,9 +74,9 @@ export default function BenchmarkBand({
       {/* How this range was calculated — itemized price breakdown */}
       {benchmark.priceBreakdown && benchmark.priceBreakdown.length > 0 && (
         <div className="border-t pt-4 space-y-3">
-          <h4 className="text-xs font-medium text-gray-600 uppercase">How this range was calculated</h4>
+          <h4 className="text-xs font-medium text-gray-900 uppercase">How this range was calculated</h4>
           <div className="bg-gray-50 p-4 space-y-2" style={{ borderRadius: "4px" }}>
-            <div className="flex justify-between text-xs font-mono text-gray-700">
+            <div className="flex justify-between text-xs font-mono text-gray-900">
               <span>Base value ({benchmark.siteType} · {benchmark.scoreBand} band)</span>
               <span>${displayNumber(benchmark.baseValue)}/mo</span>
             </div>
@@ -85,7 +85,7 @@ export default function BenchmarkBand({
               const pct = displayNumber(Math.abs(adj.percent) * 100);
               const amt = displayNumber(Math.abs(adj.amount));
               return (
-                <div key={idx} className="flex justify-between gap-3 text-xs font-mono text-gray-700 border-t border-gray-200 pt-2">
+                <div key={idx} className="flex justify-between gap-3 text-xs font-mono text-gray-900 border-t border-gray-200 pt-2">
                   <span className="flex-1">{displayText(adj.label ?? adj.fieldName, "Unknown adjustment")}</span>
                   <span className="whitespace-nowrap text-gray-900">{sign}{pct}% · {sign}${amt}</span>
                 </div>
@@ -102,7 +102,7 @@ export default function BenchmarkBand({
       {/* Rate comparison if provided */}
       {rateComparison && (
         <div className="border-t pt-4 space-y-3">
-          <h4 className="text-xs font-medium text-gray-600 uppercase">Your Rate Analysis</h4>
+          <h4 className="text-xs font-medium text-gray-900 uppercase">Your Rate Analysis</h4>
           <div className="bg-gray-50 p-4 space-y-2" style={{borderRadius: '4px'}}>
             <p
               className={`text-sm font-mono font-medium ${
@@ -119,7 +119,7 @@ export default function BenchmarkBand({
                   ? `${Math.round(rateComparison.gapPercent)}% above benchmark`
                   : "Within benchmark range"}
             </p>
-            <p className="text-xs text-gray-600">{rateComparison.message}</p>
+            <p className="text-xs text-gray-900">{rateComparison.message}</p>
             {rateComparison.position === "below" && (
               <p className="text-xs font-mono font-semibold text-gray-900 pt-2">
                 30-year cost: ${rateComparison.thirtyYearCost.toLocaleString(undefined, {
