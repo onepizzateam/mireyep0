@@ -1,4 +1,4 @@
-import { parseScoreResponse } from "@/lib/response-schema";
+import { normalizeScoreResponse, parseScoreResponse } from "@/lib/response-schema";
 
 const dimension = { raw: 70, label: "Test", weight: 1 / 3, topFields: [] };
 
@@ -30,4 +30,23 @@ test("accepts a captured successful valuation envelope", () => {
 test("rejects an ok envelope that would crash the renderer", () => {
   const parsed = parseScoreResponse({ ok: true, score: undefined });
   expect(parsed.success).toBe(false);
+});
+
+test.each([
+  ["proper array", ["supported"], ["supported"]],
+  ["single string", "supported", ["supported"]],
+  ["null", null, []],
+  ["missing", undefined, []],
+])("normalizes schema-defined string arrays: %s", (_label, input, expected) => {
+  const normalized = normalizeScoreResponse({ ...({ leverageSummary: input } as any) }) as any;
+  expect(normalized.leverageSummary).toEqual(expected);
+});
+
+test.each([
+  ["object", { text: "unsupported" }],
+  ["boolean", true],
+  ["number", 3],
+])("leaves invalid string-array types for Zod to reject: %s", (_label, input) => {
+  const normalized = normalizeScoreResponse({ ...({ leverageSummary: input } as any) });
+  expect((normalized as any).leverageSummary).toEqual(input);
 });
