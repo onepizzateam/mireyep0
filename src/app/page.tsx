@@ -12,15 +12,12 @@ import { AgentReasoning } from "@/components/AgentReasoning";
 import ValuationAssistant from "@/components/ValuationAssistant";
 import { ScoreRequest, ScoreResponse, ScoreErrorResponse } from "@/lib/types";
 import { parseScoreResponse } from "@/lib/response-schema";
-import type { SmokeResult } from "@/app/api/smoke/route";
 
 export default function Home() {
   const [results, setResults] = useState<ScoreResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
-  const [smokeResult, setSmokeResult] = useState<SmokeResult | null>(null);
-  const [isSmoking, setIsSmoking] = useState(false);
   const isAmbiguousAddress = error?.startsWith("Address is ambiguous:") ?? false;
 
   const handleScoreRequest = async (request: ScoreRequest) => {
@@ -63,16 +60,7 @@ export default function Home() {
   };
 
   const handleSmokeTest = async () => {
-    setIsSmoking(true);
-    setSmokeResult(null);
-    setError(null);
-    setResults(null);
-    try {
-      const response = await fetch("/api/smoke");
-      setSmokeResult(await response.json() as SmokeResult);
-    } catch (e) {
-      setSmokeResult({ ok: false, checks: [{ name: "Smoke test request", passed: false, ms: 0, detail: "Failed to reach /api/smoke", error: e instanceof Error ? e.message : String(e) }], totalMs: 0, timestamp: new Date().toISOString() });
-    } finally { setIsSmoking(false); }
+    await handleScoreRequest({ address: "NO BUENO", lat: 41.8789, lng: -87.6359 });
   };
 
   const handleDownloadReport = async (scoreResponse: ScoreResponse) => {
@@ -132,28 +120,8 @@ export default function Home() {
         {/* Form Section */}
         <div className="mb-12">
           <p className="text-sm text-gray-600 font-mono text-center mb-6">Enter an address to run a site valuation.</p>
-          <AddressForm onSubmit={handleScoreRequest} onSmokeTest={handleSmokeTest} isLoading={isLoading || isSmoking} />
+          <AddressForm onSubmit={handleScoreRequest} onSmokeTest={handleSmokeTest} isLoading={isLoading} />
         </div>
-
-        {isSmoking && <div className="w-full max-w-2xl mx-auto mt-6 font-mono text-xs text-gray-500">Running smoke test...</div>}
-
-        {smokeResult && !isSmoking && (
-          <div className="w-full max-w-2xl mx-auto mt-6 border border-gray-200 rounded p-4 font-mono text-xs">
-            <div className={`font-bold text-sm mb-3 ${smokeResult.ok ? "text-green-700" : "text-red-700"}`}>
-              {smokeResult.ok ? "✓ ALL CHECKS PASSED" : "✗ SMOKE TEST FAILED"} — {smokeResult.totalMs}ms
-            </div>
-            <div className="space-y-2">
-              {smokeResult.checks.map((check, index) => (
-                <div key={index} className={`border-l-2 pl-3 ${check.passed ? "border-green-400" : "border-red-400"}`}>
-                  <div className={`font-medium ${check.passed ? "text-green-700" : "text-red-700"}`}>{check.passed ? "✓" : "✗"} {check.name} ({check.ms}ms)</div>
-                  <div className="text-gray-600">{check.detail}</div>
-                  {check.error && <div className="text-red-500 mt-0.5">{check.error}</div>}
-                </div>
-              ))}
-            </div>
-            <div className="mt-3 text-gray-400">{smokeResult.timestamp}</div>
-          </div>
-        )}
 
         {/* Error Message */}
         {error && (
