@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { SiteScore } from "@/lib/types";
-import { displayText } from "@/lib/display";
+import { displayFieldName, displayText } from "@/lib/display";
 
 interface FieldDisclosureProps {
   score: SiteScore;
@@ -16,7 +16,7 @@ export default function FieldDisclosure({ score }: FieldDisclosureProps) {
     ...score.dimensions.coverageNecessity.topFields,
     ...score.dimensions.subscriberValue.topFields,
     ...score.dimensions.constructionCost.topFields,
-  ];
+  ].filter((field) => Boolean(field && (field.fieldName || (field as unknown as Record<string, unknown>).field || (field as unknown as Record<string, unknown>).name)));
 
   const disclosures = [
     {
@@ -84,7 +84,7 @@ export default function FieldDisclosure({ score }: FieldDisclosureProps) {
                     {allFields.map((field, idx) => (
                       <tr key={idx} className="border-b border-gray-100">
                         <td className="py-3 px-3 text-xs font-mono text-gray-700">
-                          {displayText(field.fieldName)}
+                          {displayFieldName(field)}
                         </td>
                         <td className="py-3 px-3 text-xs text-gray-600">
                           {field.value === null

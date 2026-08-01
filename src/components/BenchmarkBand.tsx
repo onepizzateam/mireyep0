@@ -1,6 +1,7 @@
 "use client";
 
 import { BenchmarkResult, RateComparison } from "@/lib/types";
+import { displayNumber, displayText } from "@/lib/display";
 
 interface BenchmarkBandProps {
   benchmark: BenchmarkResult;
@@ -30,8 +31,8 @@ export default function BenchmarkBand({
         {/* Visual band */}
         <div className="relative mb-6">
           <div className="flex justify-between text-xs font-mono text-gray-700 mb-2">
-            <span>${min.toLocaleString()}/mo</span>
-            <span>${max.toLocaleString()}/mo</span>
+            <span>${displayNumber(min)}/mo</span>
+            <span>${displayNumber(max)}/mo</span>
           </div>
 
           {/* Background band */}
@@ -39,7 +40,7 @@ export default function BenchmarkBand({
             {/* Orange band representing benchmark range */}
             <div className="h-full flex items-center justify-center" style={{backgroundColor: '#FFF0E6', borderRight: '2px solid #FF6600'}}>
               <span className="text-xs font-bold font-mono" style={{color: '#FF6600'}}>
-                ${mid.toLocaleString(undefined, { maximumFractionDigits: 0 })}/mo
+                ${displayNumber(mid)}/mo
               </span>
             </div>
 
@@ -66,7 +67,7 @@ export default function BenchmarkBand({
 
         {/* Calibration note */}
         <p className="text-xs text-gray-600 border-t pt-4 font-mono">
-          {benchmark.calibrationNote}
+          {displayText(benchmark.calibrationNote, "Insufficient evidence for calibration details.")}
         </p>
       </div>
 
@@ -77,7 +78,7 @@ export default function BenchmarkBand({
           <div className="bg-gray-50 p-4 space-y-2" style={{ borderRadius: "4px" }}>
             <div className="flex justify-between text-xs font-mono text-gray-700">
               <span>Base value ({benchmark.siteType} · {benchmark.scoreBand} band)</span>
-              <span>${benchmark.baseValue.toLocaleString()}/mo</span>
+              <span>${displayNumber(benchmark.baseValue)}/mo</span>
             </div>
             {benchmark.priceBreakdown.map((adj, idx) => {
               const sign = adj.direction === "positive" ? "+" : adj.direction === "negative" ? "−" : "";
