@@ -21,9 +21,10 @@ export default function ScoreCard({ score }: ScoreCardProps) {
             <p className="text-xl font-mono text-gray-400">/100</p>
           </div>
           
-          {/* Secondary: Composite Score (unclamped) */}
-          <p className="text-sm font-mono text-gray-700 mt-2">
-            Composite: <span className="font-bold">{displayNumber(score.composite)}</span>
+          {/* Secondary: Leverage-adjusted composite (unclamped) */}
+          <p className="text-sm font-mono text-gray-500 mt-2">
+            Leverage-adjusted: <span className="font-bold text-gray-700">{displayNumber(score.composite)}</span>
+            <span className="text-xs text-gray-400"> (unclamped)</span>
           </p>
           
           {/* Multiplier explanation */}
@@ -31,7 +32,7 @@ export default function ScoreCard({ score }: ScoreCardProps) {
             Permitting friction: <span className="font-mono font-bold">{score.multiplier.toFixed(2)}×</span>
           </p>
           <p className="text-xs text-gray-500">
-            Higher = harder for carriers to replace this site.
+            Higher = harder for carriers to replace this site. Score above 100 means exceptional leverage.
           </p>
         </div>
         <div className="flex-1 ml-8">

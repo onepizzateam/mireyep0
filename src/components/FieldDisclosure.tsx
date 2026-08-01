@@ -88,12 +88,16 @@ export default function FieldDisclosure({ score }: FieldDisclosureProps) {
                         </td>
                         <td className="py-3 px-3 text-xs text-gray-600">
                           {field.value === null || field.value === undefined
-                            ? <span className="text-gray-400 font-mono text-xs italic">missing — fallback used</span>
+                            ? <span className="text-gray-400 italic">missing</span>
                             : typeof field.value === "boolean"
                               ? field.value
                                 ? "Yes"
                                 : "No"
-                              : String(field.value).slice(0, 50)}
+                              : typeof field.value === "number"
+                                ? Number.isInteger(field.value)
+                                  ? field.value.toLocaleString()
+                                  : field.value.toLocaleString(undefined, { maximumFractionDigits: 2 })
+                                : String(field.value).slice(0, 60)}
                         </td>
                         <td className="py-3 px-3">
                           <span

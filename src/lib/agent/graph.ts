@@ -231,6 +231,7 @@ OpenCellID data: ${JSON.stringify(state.opencellData)}
 Planner tasks: ${JSON.stringify(state.plannerOutput)}
 Executor providers: ${JSON.stringify(state.executorOutput)}
 Evidence registry: ${JSON.stringify(state.evidence, null, 2)}`;
+  const promptWithRequirement = `${prompt}\n\nCRITICAL: The reasoning field must cite specific numbers from the evidence above (for example, "0 structures within 500m", "5,630 housing units", or "1.65× permitting multiplier from protected area overlap"). Generic statements like "evidence was unavailable" are not acceptable.`;
   const contract = `You are SignalRent's evidence interpreter. The numeric scores have already been computed deterministically. Your job is ONLY to provide:
 1. leverageSummary: 3–5 plain-English negotiation insights for the landlord
 2. dataGaps: for each field listed as a gap, write a one-sentence assumption explaining what was assumed in its place
@@ -260,7 +261,7 @@ CRITICAL FIELD REQUIREMENTS:
 - If OpenCellID data is present and nearest_antenna_structure_type is known, mention whether the nearest tower is near capacity or has open capacity using the defined structure limits (GUYED 4, SELF_SUPPORTING 3, MONOPOLE 2, BUILDING 2, WATER_TOWER 1).`;
   const message = await model.invoke([
     new SystemMessage(contract),
-    new HumanMessage(prompt),
+    new HumanMessage(promptWithRequirement),
   ]);
   let { parsed, reasoning } = parseModelResponse(message.content);
   if (!parsed.leverageSummary) {

@@ -131,7 +131,7 @@ function scoreDimension1(
     value: within500,
     impact: within500Score >= 75 ? "high" : within500Score >= 40 ? "medium" : "low",
     direction: within500Score >= 75 ? "positive" : within500Score < 40 ? "negative" : "neutral",
-    explanation: `${within500 === null ? "Unknown" : within500} structures within 500m — ${within500 === 0 ? "landlord has high leverage" : "carrier has alternatives"}`,
+    explanation: `${within500 === null ? "Unknown" : within500.toLocaleString()} structures within 500m — ${within500 === 0 ? "landlord has high leverage" : "carrier has alternatives"}`,
   });
 
   // antenna_structures_within_2km_count
@@ -151,7 +151,7 @@ function scoreDimension1(
     value: within2km,
     impact: within2kmScore >= 75 ? "high" : within2kmScore >= 40 ? "medium" : "low",
     direction: within2kmScore >= 75 ? "positive" : within2kmScore < 40 ? "negative" : "neutral",
-    explanation: `${within2km === null ? "Unknown" : within2km} structures within 2km`,
+    explanation: `${within2km === null ? "Unknown" : within2km.toLocaleString()} structures within 2km`,
   });
 
   // nearest_antenna_structure_distance_m
@@ -171,7 +171,7 @@ function scoreDimension1(
     value: nearestDist,
     impact: nearestDistScore >= 75 ? "high" : nearestDistScore >= 40 ? "medium" : "low",
     direction: nearestDistScore >= 75 ? "positive" : nearestDistScore < 40 ? "negative" : "neutral",
-    explanation: `Nearest competitor ${nearestDist === null ? "unknown" : `${nearestDist}m away`}`,
+    explanation: `Nearest competitor ${nearestDist === null ? "unknown" : `${Math.round(nearestDist)}m away`}`,
   });
 
   // nearest_antenna_structure_type
@@ -284,7 +284,7 @@ function scoreDimension1(
       value: elevation,
       impact: "high",
       direction: "positive",
-      explanation: `Elevation ${elevation}m adds ${elevationBonus} points (coverage radius advantage)`,
+      explanation: `Elevation ${Math.round(elevation ?? 0).toLocaleString()}m adds ${elevationBonus} points (coverage radius advantage)`,
     });
   }
 
@@ -376,7 +376,7 @@ function scoreDimension2(
     value: units1km,
     impact: units1kmScore >= 75 ? "high" : units1kmScore >= 40 ? "medium" : "low",
     direction: units1kmScore >= 75 ? "positive" : "neutral",
-    explanation: `${units1km === null ? "Unknown" : units1km} housing units within 1km`,
+    explanation: `${units1km === null ? "Unknown" : units1km.toLocaleString()} housing units within 1km`,
   });
 
   // poi_count_1km
@@ -396,7 +396,7 @@ function scoreDimension2(
     value: poiCount,
     impact: poiScore >= 75 ? "high" : poiScore >= 40 ? "medium" : "low",
     direction: poiScore >= 75 ? "positive" : "neutral",
-    explanation: `${poiCount === null ? "Unknown" : poiCount} POIs within 1km`,
+    explanation: `${poiCount === null ? "Unknown" : poiCount.toLocaleString()} POIs within 1km`,
   });
 
   // total_road_length_within_500m_m
@@ -416,7 +416,7 @@ function scoreDimension2(
     value: roadLength,
     impact: roadLengthScore >= 75 ? "high" : roadLengthScore >= 40 ? "medium" : "low",
     direction: roadLengthScore >= 75 ? "positive" : "neutral",
-    explanation: `${roadLength === null ? "Unknown" : roadLength}m road length within 500m`,
+    explanation: `${roadLength === null ? "Unknown" : Math.round(roadLength).toLocaleString()}m road length within 500m`,
   });
 
   // nearest_lodging_distance_m
@@ -435,7 +435,7 @@ function scoreDimension2(
     value: lodging,
     impact: lodgingScore >= 75 ? "high" : lodgingScore >= 40 ? "medium" : "low",
     direction: lodgingScore >= 75 ? "positive" : "neutral",
-    explanation: `Nearest lodging ${lodging === null ? "unknown" : `${lodging}m away`}`,
+    explanation: `Nearest lodging ${lodging === null ? "unknown" : `${Math.round(lodging).toLocaleString()}m away`}`,
   });
 
   const dim2 = (densityScore + units1kmScore + poiScore + roadLengthScore + lodgingScore) / 5;
@@ -498,7 +498,7 @@ function scoreDimension3(
     value: slope,
     impact: slopeScore >= 75 ? "high" : slopeScore >= 40 ? "medium" : "low",
     direction: "neutral",
-    explanation: `Slope ${slope === null ? "unknown" : `${slope}°`}`,
+    explanation: `Slope ${slope === null ? "unknown" : `${slope.toFixed(1)}°`}`,
   });
 
   // bedrock_depth_cm
@@ -518,7 +518,7 @@ function scoreDimension3(
     value: bedrock,
     impact: bedrockScore >= 75 ? "high" : bedrockScore >= 40 ? "medium" : "low",
     direction: "neutral",
-    explanation: `Bedrock depth ${bedrock === null ? "unknown" : `${bedrock}cm`}`,
+    explanation: `Bedrock depth ${bedrock === null ? "unknown" : `${Math.round(bedrock)}cm`}`,
   });
 
   // soil_drainage_class
@@ -572,7 +572,7 @@ function scoreDimension3(
     value: seismic,
     impact: seismicScore <= 40 ? "high" : seismicScore >= 75 ? "low" : "medium",
     direction: seismicScore <= 40 ? "negative" : "positive",
-    explanation: `Seismic PGA ${seismic === null ? "unknown" : `${seismic}g`}`,
+    explanation: `Seismic PGA ${seismic === null ? "unknown" : `${seismic.toFixed(3)}g`}`,
   });
 
   // landslide_susceptibility_index
@@ -627,7 +627,7 @@ function scoreDimension3(
     value: transmission,
     impact: transmissionScore >= 75 ? "high" : transmissionScore >= 40 ? "medium" : "low",
     direction: "neutral",
-    explanation: `Nearest transmission line ${transmission === null ? "unknown" : `${transmission}m`}`,
+    explanation: `Nearest transmission line ${transmission === null ? "unknown" : `${Math.round(transmission).toLocaleString()}m`}`,
   });
 
   // For remaining fields that are less commonly null, use neutral fallback of 60 if null

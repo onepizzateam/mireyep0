@@ -150,7 +150,7 @@ Return a single JSON object with this exact structure (no wrapper keys):
       "assumption": "<string: documented assumption>"
     }
   ],
-  "reasoning": "<string: narrative explanation of the valuation>"
+  "reasoning": "<2-3 sentences explaining which evidence was most decisive for Coverage Necessity, what drives the permitting multiplier, and one key landlord insight. Be specific and cite actual field values; this is shown directly to the user.>"
 }
 
 SCORING GUIDANCE (use evidence; do not invent):
