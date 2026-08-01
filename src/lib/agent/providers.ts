@@ -9,7 +9,7 @@ const fields = (v: any) => unwrap(v)?.fields ?? unwrap(v)?.data ?? unwrap(v) ?? 
 let catalogPromise: Promise<{ fields: any[]; presets: any }> | undefined;
 const evidenceCache = new Map<string, { expires: number; value: Evidence[] }>();
 const EVIDENCE_TTL_MS = Number(process.env.SIGNALRENT_EVIDENCE_CACHE_TTL_MS ?? 86_400_000);
-async function catalog() {
+export async function catalog() {
   if (!catalogPromise) catalogPromise = Promise.all([mcpResource("mireye://catalog/fields"), mcpResource("mireye://catalog/presets")]).then(([f, p]) => {
     const raw = unwrap(f); const list = Array.isArray(raw) ? raw : raw?.fields ?? Object.entries(raw ?? {}).map(([name, value]) => ({ name, ...(value as object) }));
     return { fields: list, presets: unwrap(p) };

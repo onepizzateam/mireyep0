@@ -10,11 +10,11 @@ import {
   type EvidenceRequest,
   type Location,
 } from "./evidence";
-import { mireyeProvider, openCellIdProvider } from "./providers";
+import { mireyeProvider, openCellIdProvider, catalog } from "./providers";
 import { mockMireyeProvider } from "./mockMireyeProvider";
 import { MOCK_LOCATION } from "./mockMireye";
 import { computeTowerSaturation, saturationLeverageSentence } from "@/lib/towerSaturation";
-import { MIREYE_FIELDS } from "@/constants/fields";
+import { MIREYE_FIELDS, MIREYE_FIELD_SET } from "@/constants/fields";
 import type { ScoreResponse, IntelligenceLayers, MireyeFields, SiteScore } from "@/lib/types";
 import { computeSiteScore } from "@/lib/score";
 import {
@@ -39,12 +39,15 @@ export const SignalRentState = Annotation.Root({
   }),
   capabilities: Annotation<any[]>(),
   plannerOutput: Annotation<EvidenceRequest[]>(),
+  plannerRationale: Annotation<string>({ value: (_prev, next) => next, default: () => "" }),
+  hypotheses: Annotation<Array<{ id: string; claim: string; fieldsToTest: string[]; implication: string; verdict?: string }>>({ value: (_prev, next) => next, default: () => [] }),
   executorOutput: Annotation<string[]>(),
   evidenceQuality: Annotation<{
     enough: boolean;
     confidence: number;
     missing: string[];
   } | null>(),
+  gapFillResults: Annotation<Array<{ field: string; question: string; answer: string; filled: boolean }>>({ value: (_prev, next) => next, default: () => [] }),
   result: Annotation<ScoreResponse | null>(),
   deterministicScore: Annotation<SiteScore | null>({ value: (_prev, next) => next, default: () => null }),
   rawFields: Annotation<MireyeFields | null>({ value: (_prev, next) => next, default: () => null }),
@@ -114,17 +117,35 @@ async function discoverNode() {
   const capabilities = await discover(registry);
   return { capabilities };
 }
-async function plannerNode() {
-  const plannerOutput: EvidenceRequest[] = MIREYE_FIELDS.map((field) => ({
+async function plannerNode(state: State) {
+  const { fields: catalogFields } = await catalog();
+  const catalogSummary = catalogFields.map((f: any) => `${f.name ?? f.field}: ${f.description ?? ""}`).join("\n");
+  const model = new ChatGoogleGenerativeAI({ model: "gemini-3.1-flash-lite", temperature: 0.2, apiKey: process.env.GEMINI_API_KEY });
+  const systemPrompt = `You are the planning agent for SignalRent, a cell tower lease valuation tool.
+Select Mireye fields for THIS site and generate 3–5 specific, testable hypotheses about value or risk.
+Use the live catalogue below. Consider site type, geography, climate, urban/rural context, and carrier context.
+Always include the full antenna/competition set and subscriber-density fields. Prioritise slope/landslide/bedrock in high-slope regions, flood/humidity near coasts, tornado frequency in tornado-prone states, and seismic fields in earthquake zones.
+Return ONLY valid JSON, with exactly: selectedFields (field names), rationale (one sentence), and hypotheses (id, claim, fieldsToTest, implication).`;
+  const message = await model.invoke([new SystemMessage(systemPrompt), new HumanMessage(`Site address: ${state.displayAddress} (${state.resolvedLat}, ${state.resolvedLng})\nCarrier: ${state.carrier ?? "unknown"}\nOffered rate: ${state.offeredRate ?? "not provided"}\n\nAvailable Mireye fields:\n${catalogSummary}`)]);
+  let plannerResult: { selectedFields: string[]; rationale: string; hypotheses: Array<{ id: string; claim: string; fieldsToTest: string[]; implication: string }> };
+  try {
+    const text = Array.isArray(message.content) ? message.content.map((p: any) => p?.text ?? String(p)).join("") : String(message.content);
+    plannerResult = JSON.parse(text.replace(/```json|```/g, "").trim());
+  } catch {
+    plannerResult = { selectedFields: [...MIREYE_FIELDS], rationale: "Fallback: planner JSON parse failed, fetching all fields.", hypotheses: [] };
+  }
+  const criticalFields = ["antenna_structures_within_500m_count", "antenna_structures_within_2km_count", "nearest_antenna_structure_distance_m", "nearest_antenna_structure_type", "mobile_5g_coverage_class", "housing_units_within_1km", "housing_units_density_per_km2", "poi_count_1km", "nearest_urban_area_distance_m", "primary_building_height_m"];
+  const finalFields = Array.from(new Set([...criticalFields, ...(plannerResult.selectedFields ?? [])])).filter((f) => MIREYE_FIELD_SET.has(f as any));
+  const plannerOutput: EvidenceRequest[] = finalFields.map((field) => ({
     concept: field,
     category: field.includes("tower") || field.includes("antenna") ? "competition" :
       field.includes("wetland") || field.includes("habitat") || field.includes("zoning") ? "regulatory" :
       field.includes("housing") || field.includes("poi") || field.includes("lodging") ? "population" :
       field.includes("slope") || field.includes("soil") || field.includes("seismic") || field.includes("flood") ? "terrain" : "infrastructure",
-    importance: "high",
-    reason: "minimum evidence baseline for the scoring model",
+    importance: criticalFields.includes(field) ? "high" : "medium",
+    reason: plannerResult.rationale,
   }));
-  return { plannerOutput };
+  return { plannerOutput, plannerRationale: plannerResult.rationale, hypotheses: plannerResult.hypotheses ?? [] };
 }
 async function collectNode(state: State) {
   const location: Location = {
@@ -176,11 +197,27 @@ async function collectNode(state: State) {
   );
   return { evidence, executorOutput };
 }
-async function assessEvidenceNode() {
+async function assessEvidenceNode(state: State) {
   const evidence = registry.all();
   const confidence = evidence.length
     ? evidence.reduce((sum, item) => sum + item.confidence, 0) / evidence.length
     : 0;
+  const fetchedFields = new Map<string, unknown>();
+  for (const item of evidence) if (item.provider === "mireye" && item.id.startsWith("mireye:")) {
+    const raw = item.rawData; fetchedFields.set(item.id.slice(7), raw != null && typeof raw === "object" && "value" in raw ? (raw as any).value : raw);
+  }
+  const highImpact = ["nearest_antenna_structure_type", "nearest_antenna_structure_distance_m", "mobile_5g_coverage_class", "housing_units_density_per_km2", "within_floodplain_polygon", "intersects_protected_area", "parcel_zoning", "fiber_broadband_available", "primary_building_height_m", "landslide_susceptibility_index"];
+  const gapFillResults: Array<{ field: string; question: string; answer: string; filled: boolean }> = [];
+  if (!process.env.SIGNALRENT_MOCK_MIREYE) {
+    gapFillResults.push(...await Promise.all(highImpact.filter((f) => fetchedFields.get(f) == null).slice(0, 3).map(async (field) => {
+      const question = `What is the ${field.replace(/_/g, " ")} at coordinates ${state.resolvedLat}, ${state.resolvedLng}? Return only the value, no explanation.`;
+      try { const result = await mcpTool("mireye_ask", { lat: state.resolvedLat, lng: state.resolvedLng, question }); const answer = String((result as any)?.answer ?? (result as any)?.value ?? result ?? "").trim();
+        if (answer && answer !== "null" && answer !== "unknown") { registry.addEvidence({ id: `mireye-ask:${field}`, provider: "mireye", category: "unknown", summary: `${field} (gap-filled via ask): ${answer}`, confidence: .6, importance: "high", provenance: { source: "Mireye MCP ask (gap-fill)", retrievedAt: new Date().toISOString() }, timestamp: new Date().toISOString(), rawData: { value: answer }, derivedFacts: [field] }); return { field, question, answer, filled: true }; }
+        return { field, question, answer: answer || "no answer", filled: false };
+      } catch { return { field, question, answer: "fetch failed", filled: false }; }
+    })));
+  }
+  const testedHypotheses = (state.hypotheses ?? []).map((h) => { const values = h.fieldsToTest.map((f) => `${f}=${fetchedFields.get(f) ?? "null"}`); return { ...h, verdict: values.every((v) => v.endsWith("=null")) ? "untestable — field data unavailable" : `Evidence: ${values.join(", ")}` }; });
   const missing = ["population", "coverage", "hazard"].filter(
     (category) =>
       !evidence.some(
@@ -194,7 +231,7 @@ async function assessEvidenceNode() {
     confidence,
     missing,
   };
-  return { evidenceQuality: quality };
+  return { evidenceQuality: quality, hypotheses: testedHypotheses, gapFillResults };
 }
 async function scoreNode(state: State) {
   const fieldMap: Record<string, unknown> = {};
@@ -288,16 +325,17 @@ async function reasonNode(state: State) {
     temperature: 0.4,
     apiKey: process.env.GEMINI_API_KEY,
   });
+  const hypothesisBlock = (state.hypotheses ?? []).length ? `\nHYPOTHESES:\n${state.hypotheses.map((h) => `${h.id}: "${h.claim}"\nFields: ${h.fieldsToTest.join(", ")}\nVerdict: ${h.verdict ?? "untested"}\nImplication: ${h.implication}`).join("\n\n")}` : "";
+  const gapFillBlock = (state.gapFillResults ?? []).length ? `\nGAP-FILLS:\n${state.gapFillResults.map((g) => `${g.field}: ${g.filled ? `FILLED → ${g.answer}` : `NOT FILLED — ${g.answer}`}`).join("\n")}` : "";
   const prompt = `Location: ${state.displayAddress} (${state.resolvedLat}, ${state.resolvedLng})
 Carrier: ${state.carrier ?? "unknown"}
 Offered rate: ${state.offeredRate ?? "not provided"}
 Buyout: ${state.buyoutAmount ?? "not provided"}
-Deterministic locked score: ${JSON.stringify(state.deterministicScore)}
-Raw Mireye fields: ${JSON.stringify(state.rawFields)}
-OpenCellID data: ${JSON.stringify(state.opencellData)}
-Planner tasks: ${JSON.stringify(state.plannerOutput)}
-Executor providers: ${JSON.stringify(state.executorOutput)}
-Evidence registry: ${JSON.stringify(state.evidence, null, 2)}
+Planner rationale: ${state.plannerRationale ?? "not available"}${hypothesisBlock}${gapFillBlock}
+DETERMINISTIC LOCKED SCORE: ${JSON.stringify(state.deterministicScore, null, 2)}
+RAW MIREYE FIELDS: ${JSON.stringify(state.rawFields, null, 2)}
+OPENCELLID DATA: ${JSON.stringify(state.opencellData, null, 2)}
+FULL EVIDENCE REGISTRY: ${JSON.stringify(state.evidence, null, 2)}
 
 BENCHMARK REASONING INPUTS (use all of these to set benchmark.monthlyRange):
 - Site state/metro extracted from address: ${state.displayAddress}
@@ -310,8 +348,9 @@ BENCHMARK REASONING INPUTS (use all of these to set benchmark.monthlyRange):
 - Deterministic site score: ${state.deterministicScore?.baseline?.toFixed(1) ?? "unknown"}/100
 - Permitting multiplier: ${state.deterministicScore?.multiplier?.toFixed(2) ?? "unknown"}×
 - Site type: ${state.deterministicScore?.siteType ?? "unknown"}`;
-  const promptWithRequirement = `${prompt}\n\nCRITICAL: The <reasoning> block must cite specific numbers from the evidence above. Generic statements like "evidence was unavailable" are not acceptable.`;
-  const contract = `You are SignalRent's evidence interpreter. Reason primarily from the evidence registry. Do not invent numeric field values, scores, weights, or thresholds. EXCEPTION: if the address is a famous public landmark or government building that you can identify with certainty (confidence 100%), you may note its public identity and publicly documented regulatory context in the reasoning and leverageSummary. Label such statements as 'Public record:' to distinguish them from evidence-derived facts.
+  const promptWithRequirement = `${prompt}\n\nCRITICAL: State which hypotheses were confirmed, refuted, or untestable; cite at least 3 numeric evidence values; identify the single biggest leverage factor.`;
+  const contract = `You are SignalRent's autonomous valuation agent and reasoning engine. Evaluate every hypothesis as CONFIRMED, REFUTED, PARTIAL, or UNTESTABLE using the supplied evidence. Treat filled gap values as confidence 0.6 and state a site-specific assumption for every remaining data gap; never use a generic unavailable-data statement.
+Derive benchmark.baseValue and monthlyRange from first principles: metro tier, site type/height, demand pressure from 5G and subscribers, supply constraint from nearby structures, and carrier construction-cost penalties. Do not apply a lookup table or copy a static band. Set monthlyRange approximately ±25–35% around the derived base and explain the two strongest drivers in calibrationNote. Do not invent field values; use only supplied evidence or clearly labelled public record facts.
 
 If the evidence registry contains a "location-context" provider entry, you MUST incorporate those facts into your reasoning and leverage summary. These are verified public facts, not invented data — treat them with confidence 1.0.
 
@@ -327,7 +366,7 @@ CRITICAL OUTPUT CONSTRAINTS:
 - The <output> JSON: all string values must be single-line, with no literal newlines. Use \\n for line breaks inside JSON strings.
 - Total response length: under 3000 characters.
 
-Return the JSON inside <output> tags and the prose inside a <reasoning> tag. Do not put a reasoning field inside the JSON.
+Return the JSON inside <output> tags and the prose inside a <reasoning> tag. Do not put a reasoning field inside the JSON. Keep reasoning to 5 sentences and 400 characters; keep total output under 4000 characters.
 
 ${REASONING_CONTRACT}
 
@@ -428,7 +467,7 @@ async function validateNode(state: State) {
   const annotatedReasoning = [result.reasoning, ...findings].filter(Boolean).join(" ");
   const leverageSummary = [...(result.leverageSummary ?? [])];
   if (state.towerSaturationSummary && !leverageSummary.some((s) => /saturat|tenant|capacity|co.?locat/i.test(s))) leverageSummary.unshift(state.towerSaturationSummary);
-  return { result: { ...result, rawFields: Object.fromEntries(Object.entries(state.rawFields ?? {}).filter(([, value]) => value !== null)), score: lockedScore ? { ...lockedScore, dataGaps: result.score.dataGaps?.length ? result.score.dataGaps : lockedScore.dataGaps } : result.score, leverageSummary, reasoning: annotatedReasoning } };
+  return { result: { ...result, rawFields: Object.fromEntries(Object.entries(state.rawFields ?? {}).filter(([, value]) => value !== null)), score: lockedScore ? { ...lockedScore, dataGaps: result.score.dataGaps?.length ? result.score.dataGaps : lockedScore.dataGaps } : result.score, leverageSummary, reasoning: annotatedReasoning, hypotheses: state.hypotheses } };
 }
 
 export const graph = new StateGraph(SignalRentState)
