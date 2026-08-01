@@ -5,7 +5,6 @@ import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/
 
 const MIREYE_MCP = "https://api.mireye.com/mcp";
 const REQUEST_TIMEOUT = 120_000;
-// Mireye MCP access is supplied through the runtime OAuth environment variable.
 
 type Session = {
   client: Client;
