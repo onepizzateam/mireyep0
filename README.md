@@ -19,7 +19,7 @@ SignalRent tells US property owners what their cell tower lease is actually wort
 1. **Mireye API key**: Sign up at [mireye.com](https://mireye.com), get key from project settings
 2. **Mapbox token**: Get a public token from [mapbox.com](https://mapbox.com)
 3. Set both in Vercel: Project Settings → Environment Variables:
-   - `MIREYE_API_KEY` (server-side only)
+   - `MIREYE_API_TOKEN` (server-side only; bearer token used by the Mireye MCP/API integration)
    - `NEXT_PUBLIC_MAPBOX_TOKEN` (public, used in browser)
 
 ### Local Development

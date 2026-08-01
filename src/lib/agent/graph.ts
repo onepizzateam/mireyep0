@@ -78,49 +78,21 @@ async function resolveNode(state: State) {
   if (process.env.SIGNALRENT_MOCK_MIREYE === "true") {
     return { resolvedLat: MOCK_LOCATION.lat, resolvedLng: MOCK_LOCATION.lng, displayAddress: MOCK_LOCATION.displayAddress };
   }
-  let response: any;
-  let geocodeWarning: string | null = null;
 
-  try {
-    response = unwrap(
-      await mcpTool("mireye_lookup", {
-        input:
-          state.lat !== undefined && state.lng !== undefined
-            ? `${state.lat},${state.lng}`
-            : state.address,
-      }),
-    );
-  } catch (error) {
-    const raw = error instanceof Error ? error.message : String(error);
-    let parsed: any = null;
-    try {
-      const jsonMatch = raw.match(/\{[\s\S]*\}/);
-      if (jsonMatch) parsed = JSON.parse(jsonMatch[0]);
-    } catch { /* not JSON */ }
-
-    if (parsed?.code === "address_too_coarse") {
-      const confidence = parsed.confidence ?? "unknown";
-      geocodeWarning = `Address matched with low confidence (${confidence}) — data may reflect a nearby point rather than the exact address entered.`;
-      response = parsed.location ?? parsed.partial ?? null;
-      if (!response) {
-        return { error: `Address could not be resolved with sufficient confidence (score: ${confidence}). Try a nearby intersection, city name, or add a ZIP code.` };
-      }
-    } else {
-      throw error;
-    }
-  }
-  if (response?.disposition === "clarify")
+  // If the frontend already resolved coordinates via Mapbox, use them directly.
+  // mireye_lookup is NOT used for geocoding — only for field data fetching downstream.
+  if (state.lat !== undefined && state.lng !== undefined) {
     return {
-      error: `Address is ambiguous: ${(response.candidates ?? []).map((c: any) => c.label).join(" or ")}`,
+      resolvedLat: state.lat,
+      resolvedLng: state.lng,
+      displayAddress: state.address,
+      geocodeWarning: null,
     };
-  if (response?.disposition === "no_match")
-    return { error: "Address not found." };
-  const location = response.location ?? response;
+  }
+
+  // Fallback: no coords provided — return a clear error rather than calling mireye_lookup
   return {
-    resolvedLat: Number(location.lat),
-    resolvedLng: Number(location.lng),
-    displayAddress: location.displayAddress ?? location.label ?? state.address,
-    geocodeWarning,
+    error: "No coordinates provided. Please select an address from the search suggestions or drop a pin on the map.",
   };
 }
 async function enrichLocationNode(state: State) {
