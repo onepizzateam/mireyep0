@@ -14,6 +14,7 @@ import type { ScoreResponse, IntelligenceLayers } from "@/lib/types";
 import {
   normalizeScoreResponse,
   parseReasoningResponse,
+  reasoningContractDescription,
 } from "@/lib/response-schema";
 
 export const SignalRentState = Annotation.Root({
@@ -192,7 +193,7 @@ function parseModelResponse(content: unknown) {
       );
     }
     return {
-      parsed: validation.data,
+      parsed: validation.data as unknown as Record<string, unknown>,
       reasoning:
         text.match(/<reasoning>([\s\S]*?)<\/reasoning>/i)?.[1]?.trim() ?? "",
     };
@@ -212,8 +213,7 @@ async function reasonNode(state: State) {
     apiKey: process.env.GEMINI_API_KEY,
   });
   const prompt = `Location: ${state.displayAddress} (${state.resolvedLat}, ${state.resolvedLng})\nCarrier: ${state.carrier ?? "unknown"}\nOffered rate: ${state.offeredRate ?? "not provided"}\nBuyout: ${state.buyoutAmount ?? "not provided"}\nPlanner tasks: ${JSON.stringify(state.plannerOutput)}\nExecutor providers: ${JSON.stringify(state.executorOutput)}\nEvidence registry: ${JSON.stringify(state.evidence, null, 2)}`;
-  const contract =
-    "You are SignalRent's evidence-based valuation reasoner. Reason only from the evidence registry. Do not invent values, fields, providers, weights, scores, thresholds, or missing facts. Return one top-level JSON object. Every required field must use its specified JSON type: ok boolean true; address string; displayAddress string; lat number; lng number; score object; benchmark object; leverageSummary array of strings (always a JSON array, even for one item); dataGaps array of structured gap objects; reasoning string. The score object must contain baseline number, composite number, multiplier number, final number, dimensions object, permittingFriction object, siteType string, and dataGaps array. The benchmark object must contain monthlyRange object, annualRange object, siteType string, scoreBand string, calibrationNote string, baseValue number, and priceBreakdown array of structured adjustment objects. Include explicit uncertainty in dataGaps and leverageSummary when evidence is missing. Never wrap the object under result, output, valuation, or any other key. You may optionally wrap JSON in <output> tags and reasoning text in <reasoning> tags.";
+  const contract = `You are SignalRent's evidence-based valuation reasoner. Reason only from the evidence registry. Do not invent values, fields, providers, weights, scores, thresholds, or missing facts. Return exactly one top-level JSON object matching this schema:\n${reasoningContractDescription}\nEvery collection must be a JSON array, including one-item collections. Include explicit uncertainty in dataGaps and leverageSummary when evidence is missing. Never wrap the object under result, output, valuation, or any other key. You may optionally wrap JSON in <output> tags and reasoning text in <reasoning> tags.`;
   const message = await model.invoke([
     new SystemMessage(contract),
     new HumanMessage(prompt),
@@ -235,21 +235,17 @@ async function reasonNode(state: State) {
       ...parsed,
       reasoning,
       intelligence: {} as IntelligenceLayers,
-    } as ScoreResponse,
+    } as unknown as ScoreResponse,
   };
 }
 async function validateNode(state: State) {
-  const missing = [
-    !state.result?.score && "score",
-    !state.result?.benchmark && "benchmark",
-    !Array.isArray(state.result?.leverageSummary) && "leverageSummary",
-  ].filter(Boolean);
-  const valid = missing.length === 0;
-  if (!valid)
+  const validation = parseReasoningResponse(state.result);
+  if (!validation.success) {
     return {
-      error: `Reasoner returned an incomplete valuation result (missing: ${missing.join(", ")})`,
+      error: `Reasoner returned an incomplete valuation result: ${validation.error.issues.map((issue) => issue.path.join(".")).join(", ")}`,
     };
-  return { result: state.result };
+  }
+  return { result: validation.data as unknown as ScoreResponse };
 }
 
 export const graph = new StateGraph(SignalRentState)

@@ -53,6 +53,20 @@ export const scoreResponseSchema = z
 
 export const reasoningResponseSchema = scoreResponseSchema.omit({ processingMs: true });
 
+function schemaDescription(schema: any, indent = ""): string {
+  const current = unwrapSchema(schema);
+  const def = schemaDef(current);
+  if (def.type === "object") {
+    return `object {\n${Object.entries(schemaProperties(current)).map(([key, child]) => `${indent}  ${key}: ${schemaDescription(child, `${indent}  `)}`).join("\n")}\n${indent}}`;
+  }
+  if (def.type === "array") return `array of ${schemaDescription(def.element, indent)}`;
+  if (def.type === "literal") return JSON.stringify(def.values?.[0] ?? def.value);
+  if (def.type === "enum") return `one of ${Object.values(def.entries ?? {}).join(" | ")}`;
+  return def.type ?? "unknown";
+}
+
+export const reasoningContractDescription = schemaDescription(reasoningResponseSchema);
+
 function schemaDef(schema: any): any {
   return schema?._zod?.def ?? schema?._def ?? {};
 }
@@ -68,17 +82,37 @@ function isStringArraySchema(schema: any): boolean {
   return def.type === "array" && schemaDef(element).type === "string";
 }
 
-/** Normalizes only harmless string-array representation differences. */
-export function normalizeScoreResponse(value: unknown): unknown {
-  if (!value || typeof value !== "object" || Array.isArray(value)) return value;
-  const normalized = { ...(value as Record<string, unknown>) };
-  for (const [key, propertySchema] of Object.entries(schemaProperties(scoreResponseSchema))) {
-    const current = normalized[key];
-    if (!isStringArraySchema(propertySchema)) continue;
-    if (current === null || current === undefined) normalized[key] = [];
-    else if (typeof current === "string") normalized[key] = [current];
+function unwrapSchema(schema: any): any {
+  const type = schemaDef(schema).type;
+  return ["optional", "nullable", "default", "catch"].includes(type)
+    ? schemaDef(schema).innerType ?? schemaDef(schema).schema ?? schema
+    : schema;
+}
+
+function normalizeNode(schema: any, value: unknown, present: boolean): unknown {
+  const currentSchema = unwrapSchema(schema);
+  if (!present) return value;
+  if (isStringArraySchema(currentSchema)) {
+    if (value === null) return [];
+    if (typeof value === "string") return [value];
+    return value;
   }
-  return normalized;
+  const def = schemaDef(currentSchema);
+  if (def.type === "object" && value && typeof value === "object" && !Array.isArray(value)) {
+    const normalized = { ...(value as Record<string, unknown>) };
+    for (const [key, propertySchema] of Object.entries(schemaProperties(currentSchema))) {
+      if (Object.prototype.hasOwnProperty.call(normalized, key)) {
+        normalized[key] = normalizeNode(propertySchema, normalized[key], true);
+      }
+    }
+    return normalized;
+  }
+  return value;
+}
+
+/** Recursively normalizes only harmless string-array representation differences. */
+export function normalizeScoreResponse(value: unknown): unknown {
+  return normalizeNode(scoreResponseSchema, value, true);
 }
 
 export function parseScoreResponse(value: unknown) {

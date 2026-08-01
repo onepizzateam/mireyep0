@@ -36,10 +36,22 @@ test.each([
   ["proper array", ["supported"], ["supported"]],
   ["single string", "supported", ["supported"]],
   ["null", null, []],
-  ["missing", undefined, []],
 ])("normalizes schema-defined string arrays: %s", (_label, input, expected) => {
   const normalized = normalizeScoreResponse({ ...({ leverageSummary: input } as any) }) as any;
   expect(normalized.leverageSummary).toEqual(expected);
+});
+
+test("does not turn a missing required array into a valid value", () => {
+  const normalized = normalizeScoreResponse({});
+  expect(Object.prototype.hasOwnProperty.call(normalized as object, "leverageSummary")).toBe(false);
+  expect(parseScoreResponse(normalized).success).toBe(false);
+});
+
+test("recursively normalizes nested schema-defined string arrays", () => {
+  const normalized = normalizeScoreResponse({
+    score: { permittingFriction: { flags: "wetland" } },
+  }) as any;
+  expect(normalized.score.permittingFriction.flags).toEqual(["wetland"]);
 });
 
 test.each([
