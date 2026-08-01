@@ -228,8 +228,9 @@ export interface ScoreResponse {
 export interface DataCitation { source: string; url: string; retrievedAt: string; claim?: string; }
 export interface IntelligenceLayers {
   bdc: { coverage: Record<string, unknown>[]; gapCarriers: string[]; error?: string; citations: DataCitation[] };
-  uls: { licenses: Record<string, unknown>[]; carrierNames: string[]; error?: string; citations: DataCitation[] };
+  uls: { licenses: Record<string, unknown>[]; carrierNames: string[]; spectrumObligatedCarriers?: string[]; error?: string; citations: DataCitation[] };
   opencellid: { cells: Record<string, unknown>[]; carriersPresent: string[]; error?: string; citations: DataCitation[] };
+  asr: { structures: Record<string, unknown>[]; nearestStructure: Record<string, unknown> | null; error?: string; queryLat: number; queryLng: number; radiusKm: number };
   faa: { cases: Record<string, unknown>[]; hazardCount: number; approvedCount: number; error?: string; citations: DataCitation[] };
   auction: { obligations: Record<string, unknown>[]; obligatedCarriers: string[]; error?: string; citations: DataCitation[] };
 }

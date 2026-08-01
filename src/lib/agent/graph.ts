@@ -10,7 +10,8 @@ import {
   type EvidenceRequest,
   type Location,
 } from "./evidence";
-import { mireyeProvider, openCellIdProvider } from "./providers";
+import { mireyeProvider, openCellIdProvider, fccAsrProvider, fccUlsProvider } from "./providers";
+import { computeTowerSaturation, saturationLeverageSentence } from "@/lib/towerSaturation";
 import { MIREYE_FIELDS } from "@/constants/fields";
 import type { ScoreResponse, IntelligenceLayers, MireyeFields, SiteScore } from "@/lib/types";
 import { computeSiteScore } from "@/lib/score";
@@ -46,12 +47,15 @@ export const SignalRentState = Annotation.Root({
   deterministicScore: Annotation<SiteScore | null>({ value: (_prev, next) => next, default: () => null }),
   rawFields: Annotation<MireyeFields | null>({ value: (_prev, next) => next, default: () => null }),
   opencellData: Annotation<any>({ value: (_prev, next) => next, default: () => null }),
+  towerSaturationSummary: Annotation<string>({ value: (_prev, next) => next, default: () => "" }),
   error: Annotation<string | null>(),
 });
 type State = typeof SignalRentState.State;
 const registry = new EvidenceRegistry();
 registry.addProvider(mireyeProvider);
 registry.addProvider(openCellIdProvider);
+registry.addProvider(fccAsrProvider);
+registry.addProvider(fccUlsProvider);
 const unwrap = (v: any) => v?.structuredContent ?? v?.data ?? v?.content ?? v;
 const NOTABLE_ADDRESS_FACTS: Array<{ pattern: RegExp; facts: string[]; category: EvidenceCategory }> = [
   {
@@ -210,8 +214,12 @@ async function scoreNode(state: State) {
   }
   const fields = fieldMap as unknown as MireyeFields;
   const opencellEvidence = state.evidence.find((e) => e.provider === "opencellid");
+  const asrEvidence = state.evidence.find((e) => e.provider === "fcc-asr");
   const opencellData = opencellEvidence?.rawData as { cells: Array<Record<string, unknown>>; carriersPresent: string[]; error?: string } | undefined;
-  return { deterministicScore: computeSiteScore(fields, opencellData?.carriersPresent ?? []), rawFields: fields, opencellData };
+  const structureType = asrEvidence?.rawData?.nearestStructure?.structureType ?? (fieldMap["nearest_antenna_structure_type"] as string | null) ?? null;
+  const carriersPresent = opencellData?.carriersPresent ?? [];
+  const saturation = computeTowerSaturation(structureType, carriersPresent);
+  return { deterministicScore: computeSiteScore(fields, carriersPresent, structureType), rawFields: fields, opencellData, towerSaturationSummary: saturation ? saturationLeverageSentence(saturation) : "" };
 }
 export function parseModelResponse(content: unknown) {
   const text = Array.isArray(content)
@@ -396,7 +404,9 @@ async function validateNode(state: State) {
   if (!benchmarkTraceable) findings.push("WARNING: some benchmark adjustments could not be fully traced to available evidence.");
   if (!minimumEvidence) findings.push("WARNING: partial evidence was available; missing evidence lowers confidence.");
   const annotatedReasoning = [result.reasoning, ...findings].filter(Boolean).join(" ");
-  return { result: { ...result, score: lockedScore ? { ...lockedScore, dataGaps: result.score.dataGaps ?? lockedScore.dataGaps } : result.score, reasoning: annotatedReasoning } };
+  const leverageSummary = [...(result.leverageSummary ?? [])];
+  if (state.towerSaturationSummary && !leverageSummary.some((s) => /saturat|tenant|capacity|co.?locat/i.test(s))) leverageSummary.unshift(state.towerSaturationSummary);
+  return { result: { ...result, score: lockedScore ? { ...lockedScore, dataGaps: result.score.dataGaps?.length ? result.score.dataGaps : lockedScore.dataGaps } : result.score, leverageSummary, reasoning: annotatedReasoning } };
 }
 
 export const graph = new StateGraph(SignalRentState)

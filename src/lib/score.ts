@@ -100,6 +100,7 @@ function classifySiteType(fields: MireyeFields): { siteType: SiteType; dataGaps:
 function scoreDimension1(
   fields: MireyeFields,
   opencellCarriers: string[] = [],
+  asrStructureType?: string | null,
 ): { score: number; dataGaps: string[]; topFields: FieldContribution[] } {
   const dataGaps: string[] = [];
   const contributions: Array<{
@@ -288,7 +289,7 @@ function scoreDimension1(
     });
   }
 
-  const saturation = computeTowerSaturation(fields.nearest_antenna_structure_type, opencellCarriers);
+  const saturation = computeTowerSaturation(asrStructureType ?? fields.nearest_antenna_structure_type, opencellCarriers);
   if (saturation !== null) {
     const saturated = saturation.isSaturated;
     dim1 = Math.max(0, Math.min(100, dim1 + (saturated ? 12 : -8)));
@@ -794,7 +795,7 @@ function scorePermittingFriction(
  * Compute full site score
  * Per AGENTS.md Section 6
  */
-export function computeSiteScore(fields: MireyeFields, opencellCarriers: string[] = []): SiteScore {
+export function computeSiteScore(fields: MireyeFields, opencellCarriers: string[] = [], asrStructureType?: string | null): SiteScore {
   const allDataGaps: Set<string> = new Set();
 
   // Step 1: Classify site type
@@ -802,7 +803,7 @@ export function computeSiteScore(fields: MireyeFields, opencellCarriers: string[
   siteTypeGaps.forEach((g) => allDataGaps.add(g));
 
   // Step 2: Score Dimension 1 (Coverage Necessity)
-  const { score: dim1Raw, dataGaps: dim1Gaps, topFields: dim1TopFields } = scoreDimension1(fields, opencellCarriers);
+  const { score: dim1Raw, dataGaps: dim1Gaps, topFields: dim1TopFields } = scoreDimension1(fields, opencellCarriers, asrStructureType);
   dim1Gaps.forEach((g) => allDataGaps.add(g));
 
   // Step 3: Score Dimension 2 (Subscriber Value)
