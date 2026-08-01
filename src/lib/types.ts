@@ -235,6 +235,7 @@ export interface IntelligenceLayers {
 }
 
 export type ScoreErrorCode =
+  | "AGENT_CONTRACT"
   | "GEOCODING_FAILED"
   | "MIREYE_ERROR"
   | "MIREYE_TIMEOUT"

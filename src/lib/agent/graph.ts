@@ -14,7 +14,7 @@ import type { ScoreResponse, IntelligenceLayers } from "@/lib/types";
 import {
   normalizeScoreResponse,
   parseReasoningResponse,
-  reasoningContractDescription,
+  REASONING_CONTRACT,
 } from "@/lib/response-schema";
 
 export const SignalRentState = Annotation.Root({
@@ -185,6 +185,8 @@ function parseModelResponse(content: unknown) {
         : raw?.output?.score
           ? raw.output
           : raw;
+    // Inject ok: true if missing — the model won't return it but our schema requires it
+    if (!parsed.ok) parsed.ok = true;
     const normalized = normalizeScoreResponse(parsed) as Record<string, unknown>;
     const validation = parseReasoningResponse(normalized);
     if (!validation.success) {
@@ -208,12 +210,42 @@ function parseModelResponse(content: unknown) {
 }
 async function reasonNode(state: State) {
   const model = new ChatGoogleGenerativeAI({
-    model: "gemini-3.1-flash-lite",
+    model: "gemini-2.0-flash-lite",
     temperature: 0,
     apiKey: process.env.GEMINI_API_KEY,
   });
-  const prompt = `Location: ${state.displayAddress} (${state.resolvedLat}, ${state.resolvedLng})\nCarrier: ${state.carrier ?? "unknown"}\nOffered rate: ${state.offeredRate ?? "not provided"}\nBuyout: ${state.buyoutAmount ?? "not provided"}\nPlanner tasks: ${JSON.stringify(state.plannerOutput)}\nExecutor providers: ${JSON.stringify(state.executorOutput)}\nEvidence registry: ${JSON.stringify(state.evidence, null, 2)}`;
-  const contract = `You are SignalRent's evidence-based valuation reasoner. Reason only from the evidence registry. Do not invent values, fields, providers, weights, scores, thresholds, or missing facts. Return exactly one top-level JSON object matching this schema:\n${reasoningContractDescription}\nEvery collection must be a JSON array, including one-item collections. Include explicit uncertainty in dataGaps and leverageSummary when evidence is missing. Never wrap the object under result, output, valuation, or any other key. You may optionally wrap JSON in <output> tags and reasoning text in <reasoning> tags.`;
+  const prompt = `Location: ${state.displayAddress} (${state.resolvedLat}, ${state.resolvedLng})
+Carrier: ${state.carrier ?? "unknown"}
+Offered rate: ${state.offeredRate ?? "not provided"}
+Buyout: ${state.buyoutAmount ?? "not provided"}
+Planner tasks: ${JSON.stringify(state.plannerOutput)}
+Executor providers: ${JSON.stringify(state.executorOutput)}
+Evidence registry: ${JSON.stringify(state.evidence, null, 2)}`;
+  const contract = `You are SignalRent's evidence-based valuation reasoner. Reason only from the evidence registry. Do not invent values, fields, providers, weights, scores, thresholds, or missing facts.
+
+Return exactly one top-level JSON object matching this schema. Do NOT wrap it under any key like "result", "output", or "valuation". You may optionally wrap JSON in <output> tags and reasoning text in <reasoning> tags.
+
+${REASONING_CONTRACT}
+
+CRITICAL FIELD REQUIREMENTS:
+- score.dimensions.coverageNecessity.label MUST be exactly "Coverage Necessity"
+- score.dimensions.subscriberValue.label MUST be exactly "Subscriber Value"  
+- score.dimensions.constructionCost.label MUST be exactly "Construction Cost"
+- score.dimensions.coverageNecessity.weight MUST be 0.40
+- score.dimensions.subscriberValue.weight MUST be 0.30
+- score.dimensions.constructionCost.weight MUST be 0.30
+- score.baseline = (coverageNecessity.raw * 0.40) + (subscriberValue.raw * 0.30) + (constructionCost.raw * 0.30), a number 0-100
+- score.composite = score.baseline * score.permittingFriction.multiplierRaw
+- score.final = Math.min(100, Math.max(0, score.composite))
+- score.multiplier = score.permittingFriction.multiplierRaw
+- score.siteType MUST be one of: "urban", "suburban", "rural"
+- benchmark.scoreBand MUST be one of: "high", "mid", "low"
+- benchmark.siteType MUST match score.siteType
+- benchmark.priceBreakdown items MUST each have: label (string), fieldName (string), amount (number), percent (number 0-1), direction ("positive"|"negative"|"neutral")
+- dataGaps items MUST each have: field (string), impact ("high"|"medium"|"low"), assumption (string)
+- score.dataGaps MUST be the same array as top-level dataGaps
+- leverageSummary MUST be an array of 2-5 plain-English strings
+- All numeric score values (raw, baseline, composite, final) must be realistic 0-100 values based on evidence. Do not default to 0 or 1.`;
   const message = await model.invoke([
     new SystemMessage(contract),
     new HumanMessage(prompt),
