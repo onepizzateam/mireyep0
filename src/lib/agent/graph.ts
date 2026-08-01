@@ -300,7 +300,19 @@ Raw Mireye fields: ${JSON.stringify(state.rawFields)}
 OpenCellID data: ${JSON.stringify(state.opencellData)}
 Planner tasks: ${JSON.stringify(state.plannerOutput)}
 Executor providers: ${JSON.stringify(state.executorOutput)}
-Evidence registry: ${JSON.stringify(state.evidence, null, 2)}`;
+Evidence registry: ${JSON.stringify(state.evidence, null, 2)}
+
+BENCHMARK REASONING INPUTS (use all of these to set benchmark.monthlyRange):
+- Site state/metro extracted from address: ${state.displayAddress}
+- Building height: ${(state.rawFields as any)?.primary_building_height_m ?? "unknown"}m
+- Housing density: ${(state.rawFields as any)?.housing_units_density_per_km2 ?? "unknown"} units/km²
+- POI count 1km: ${(state.rawFields as any)?.poi_count_1km ?? "unknown"}
+- Antenna structures within 2km: ${(state.rawFields as any)?.antenna_structures_within_2km_count ?? "unknown"}
+- 5G coverage class: ${(state.rawFields as any)?.mobile_5g_coverage_class ?? "unknown"}
+- Fiber providers: ${(state.rawFields as any)?.fiber_provider_count ?? "unknown"}
+- Deterministic site score: ${state.deterministicScore?.baseline?.toFixed(1) ?? "unknown"}/100
+- Permitting multiplier: ${state.deterministicScore?.multiplier?.toFixed(2) ?? "unknown"}×
+- Site type: ${state.deterministicScore?.siteType ?? "unknown"}`;
   const promptWithRequirement = `${prompt}\n\nCRITICAL: The <reasoning> block must cite specific numbers from the evidence above. Generic statements like "evidence was unavailable" are not acceptable.`;
   const contract = `You are SignalRent's evidence interpreter. Reason primarily from the evidence registry. Do not invent numeric field values, scores, weights, or thresholds. EXCEPTION: if the address is a famous public landmark or government building that you can identify with certainty (confidence 100%), you may note its public identity and publicly documented regulatory context in the reasoning and leverageSummary. Label such statements as 'Public record:' to distinguish them from evidence-derived facts.
 
@@ -309,7 +321,7 @@ If the evidence registry contains a "location-context" provider entry, you MUST 
 The numeric scores have already been computed deterministically. Your job is ONLY to provide:
 1. leverageSummary: 3–5 plain-English negotiation insights for the landlord
 2. dataGaps: for each field listed as a gap, write a one-sentence assumption explaining what was assumed in its place
-3. benchmark.priceBreakdown: 2–4 price adjustment items grounded in the evidence
+3. benchmark: Compute a market-realistic monthly lease range for this specific location. Use the state/metro, published state/metro lease ranges, building height premium, site type, competition, 5G gap, subscriber density, fiber, and permitting friction. Urban rooftop >150m generally commands $5,000–$15,000/mo; high-demand metros such as Chicago sit at the top of their range. Set baseValue to your best location-specific estimate, monthlyRange to roughly ±25–35% around it, calibrationNote to one sentence naming the city/state and key factors, and priceBreakdown to 2–4 itemized dollar adjustments grounded in the evidence.
 4. reasoning: provide this in the <reasoning> tag outside the JSON
 DO NOT recompute or change any numeric scores. Return them exactly as given.
 
@@ -337,7 +349,14 @@ CRITICAL FIELD REQUIREMENTS:
 - dataGaps items MUST each have: field (string), impact ("high"|"medium"|"low"), assumption (string)
 - score.dataGaps MUST be the same array as top-level dataGaps
 - leverageSummary MUST be an array of 2-5 plain-English strings
-- If OpenCellID data is present and nearest_antenna_structure_type is known, mention whether the nearest tower is near capacity or has open capacity using the defined structure limits (GUYED 4, SELF_SUPPORTING 3, MONOPOLE 2, BUILDING 2, WATER_TOWER 1).`;
+- If OpenCellID data is present and nearest_antenna_structure_type is known, mention whether the nearest tower is near capacity or has open capacity using the defined structure limits (GUYED 4, SELF_SUPPORTING 3, MONOPOLE 2, BUILDING 2, WATER_TOWER 1).
+
+BENCHMARK GUIDANCE: Willis Tower Chicago has a 442m building, urban site, high score, and top-tier metro. Use approximately $8,000 baseValue and a $5,500-$12,000 range as calibration; do not default to static urban table values when height and metro inputs support a higher estimate.`;
+  /*
+ - If OpenCellID data is present and nearest_antenna_structure_type is known, mention whether the nearest tower is near capacity or has open capacity using the defined structure limits (GUYED 4, SELF_SUPPORTING 3, MONOPOLE 2, BUILDING 2, WATER_TOWER 1).
+
+BENCHMARK GUIDANCE — Willis Tower Chicago calibration: 442m building, urban, high score, Chicago top-tier metro may support a baseValue around $8,000 and a $5,500–$12,000 range. Do not default to static urban table values when height and metro inputs support a higher estimate.`;
+  */
   const message = await model.invoke([
     new SystemMessage(contract),
     new HumanMessage(promptWithRequirement),

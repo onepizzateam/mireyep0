@@ -7,6 +7,10 @@ function buildSystemContext(v: ScoreResponse): string {
   const rawSection = v.rawFields && Object.keys(v.rawFields).length > 0
     ? `\nALL FETCHED FIELD VALUES:\n${Object.entries(v.rawFields).map(([key, value]) => `- ${key}: ${String(value)}`).join("\n")}\n`
     : "";
+  const height = v.rawFields?.primary_building_height_m;
+  const heightNote = height != null && Number(height) > 50
+    ? `\nNOTE: Building height of ${height}m is a significant factor — this tall rooftop has superior signal propagation range, and carriers pay a premium because ground-level alternatives cannot replicate the coverage radius.\n`
+    : "";
   return `Address: ${v.displayAddress}
 Site type: ${v.score.siteType}
 Site score (displayed in UI): ${v.score.baseline.toFixed(1)}/100
@@ -18,7 +22,7 @@ Benchmark range: ${JSON.stringify(v.benchmark.monthlyRange)}
 Leverage summary: ${JSON.stringify(v.leverageSummary)}
 Data gaps: ${JSON.stringify(v.dataGaps)}
 OpenCellID: ${JSON.stringify(v.intelligence?.opencellid ? { cells: v.intelligence.opencellid.cells.length, carriers: v.intelligence.opencellid.carriersPresent } : null)}
-${rawSection}
+${rawSection}${heightNote}
 INSTRUCTIONS: Write plain prose only — no markdown headers, bullets, or bold. Maximum 4 sentences for simple questions, 6–8 for complex ones. Never use the word "dimension"; say "component" or name it directly. When referencing the site score say "${v.score.baseline.toFixed(0)}/100". Answer field-specific questions directly from the ALL FETCHED FIELD VALUES section above. All field values are pre-loaded; do not say you looked anything up. If a field is genuinely not in that section, say it was not available for this site and suggest a professional site survey.`;
 }
 

@@ -157,6 +157,19 @@ function buildPriceAdjustments(
     totalAdjustmentPercent += percent;
   }
 
+  // Tall building rooftop premium — height improves propagation and is difficult to replicate.
+  if (fields.primary_building_height_m !== null && fields.primary_building_height_m > 50) {
+    const percent = parseFloat(Math.min((fields.primary_building_height_m / 100) * 0.10, 0.15).toFixed(2));
+    adjustments.push({
+      label: `Tall building rooftop premium (${Math.round(fields.primary_building_height_m)}m)`,
+      fieldName: "primary_building_height_m",
+      percent,
+      amount: Math.round(baseValue * percent),
+      direction: "positive",
+    });
+    totalAdjustmentPercent += percent;
+  }
+
   // Cap total adjustment at ±30%
   const cappedAdjustmentPercent = Math.max(-0.30, Math.min(0.30, totalAdjustmentPercent));
 

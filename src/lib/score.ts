@@ -289,6 +289,25 @@ function scoreDimension1(
     });
   }
 
+  // Rooftop height independently increases propagation radius and replacement difficulty.
+  const buildingHeight = fields.primary_building_height_m;
+  let heightBonus = 0;
+  if (buildingHeight !== null && buildingHeight > 0) {
+    heightBonus = Math.min(Math.round((buildingHeight / 100) * 15), 15);
+    contributions.push({
+      field: "primary_building_height_m",
+      score: heightBonus,
+      value: buildingHeight,
+      impact: heightBonus >= 10 ? "high" : heightBonus >= 5 ? "medium" : "low",
+      direction: "positive",
+      explanation: `Building height ${Math.round(buildingHeight)}m adds ${heightBonus} points — rooftop propagation radius advantage`,
+    });
+  } else if (buildingHeight === null) {
+    dataGaps.push("primary_building_height_m");
+  }
+  dim1 += heightBonus;
+  dim1 = Math.max(0, Math.min(100, dim1));
+
   const saturation = computeTowerSaturation(asrStructureType ?? fields.nearest_antenna_structure_type, opencellCarriers);
   if (saturation !== null) {
     const saturated = saturation.isSaturated;
