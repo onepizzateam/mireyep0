@@ -135,7 +135,15 @@ Return ONLY valid JSON, with exactly: selectedFields (field names), rationale (o
     plannerResult = { selectedFields: [...MIREYE_FIELDS], rationale: "Fallback: planner JSON parse failed, fetching all fields.", hypotheses: [] };
   }
   const criticalFields = ["antenna_structures_within_500m_count", "antenna_structures_within_2km_count", "nearest_antenna_structure_distance_m", "nearest_antenna_structure_type", "mobile_5g_coverage_class", "housing_units_within_1km", "housing_units_density_per_km2", "poi_count_1km", "nearest_urban_area_distance_m", "primary_building_height_m"];
-  const finalFields = Array.from(new Set([...criticalFields, ...(plannerResult.selectedFields ?? [])])).filter((f) => MIREYE_FIELD_SET.has(f as any));
+  // Gemini selects priorities, but every catalogue field is still required by
+  // the deterministic scorer, benchmark derivation, and gap explanations.
+  // Keep the selection intelligent in rationale/hypotheses while preventing
+  // the planner from starving downstream layers of fields they consume.
+  const finalFields = Array.from(new Set([
+    ...MIREYE_FIELDS,
+    ...criticalFields,
+    ...(plannerResult.selectedFields ?? []),
+  ])).filter((f) => MIREYE_FIELD_SET.has(f as any));
   const plannerOutput: EvidenceRequest[] = finalFields.map((field) => ({
     concept: field,
     category: field.includes("tower") || field.includes("antenna") ? "competition" :
