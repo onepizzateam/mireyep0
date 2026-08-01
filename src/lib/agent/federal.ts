@@ -1,6 +1,4 @@
 import type { IntelligenceLayers, DataCitation } from "@/lib/types";
-import { fetchFccAsrStructures } from "./fccAsr";
-import { fetchFccUlsLicenses, resolveCarrierName } from "./fccUls";
 
 interface OpenCelliDCell {
   mcc: string | number;
@@ -31,7 +29,6 @@ function empty(error: string): IntelligenceLayers {
     bdc: { coverage: [], gapCarriers: [], error, citations: [citation("FCC BDC", "https://broadbandmap.fcc.gov/")] },
     uls: { licenses: [], carrierNames: [], error, citations: [citation("FCC ULS", "https://wireless2.fcc.gov/UlsApp/UlsSearch/searchLicense.jsp")] },
     opencellid: { cells: [], carriersPresent: [], error, citations: [citation("OpenCelliD", "https://opencellid.org/")] },
-    asr: { structures: [], nearestStructure: null, error, queryLat: 0, queryLng: 0, radiusKm: 2 },
     faa: { cases: [], hazardCount: 0, approvedCount: 0, error, citations: [citation("FAA OE/AAA", "https://oeaaa.faa.gov/")] },
     auction: { obligations: [], obligatedCarriers: [], error, citations: [citation("FCC Auctions", "https://www.fcc.gov/auctions")] },
   };
@@ -43,15 +40,13 @@ export async function fetchFederalLayers(lat: number, lng: number, county?: stri
     if (key) {
       const bbox = `${lat - .0045},${lng - .0045},${lat + .0045},${lng + .0045}`;
       const data = await json(`https://opencellid.org/cell/getInArea?key=${encodeURIComponent(key)}&BBOX=${encodeURIComponent(bbox)}&limit=50&offset=0&format=json`);
-      const cells: OpenCelliDCell[] = (data?.cells ?? []).map((c: OpenCelliDCell) => ({ ...c, carrier_name: c.carrier_name ?? resolveCarrierName(c.mcc, c.mnc) }));
+      const cells: OpenCelliDCell[] = (data?.cells ?? []).map((c: OpenCelliDCell) => ({ ...c, carrier_name: c.carrier_name ?? `MCC${c.mcc}-MNC${c.mnc}` }));
       out.opencellid = { cells, carriersPresent: [...new Set(cells.map((c: OpenCelliDCell) => String(c.carrier_name ?? "")))], citations: [citation("OpenCelliD", "https://opencellid.org/")] };
     } else out.opencellid.error = "OPENCELLID_API_KEY not configured";
   } catch (e) { out.opencellid.error = String(e); }
   // These public datasets have different query contracts and are intentionally isolated;
   // adapters can be enabled without changing the graph or report schema.
   out.bdc.error = process.env.FCC_BDC_API_URL ? "BDC adapter returned no normalized records" : "FCC_BDC_API_URL not configured";
-  const asr = await fetchFccAsrStructures(lat, lng, 2); out.asr = asr as any;
-  const uls = await fetchFccUlsLicenses(lat, lng, 1); out.uls = { licenses: uls.licenses as any, carrierNames: uls.carrierNames, spectrumObligatedCarriers: uls.spectrumObligatedCarriers, error: uls.error, citations: [citation("FCC ULS", "https://data.fcc.gov/api/license-view/basicSearch/getLicenses")] };
   out.faa.error = "FAA OE/AAA adapter not configured";
   out.auction.error = county ? "Auction obligation dataset not configured" : "County unavailable for auction lookup";
   return out;

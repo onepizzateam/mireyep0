@@ -10,7 +10,7 @@ import {
   type EvidenceRequest,
   type Location,
 } from "./evidence";
-import { mireyeProvider, openCellIdProvider, fccAsrProvider, fccUlsProvider } from "./providers";
+import { mireyeProvider, openCellIdProvider } from "./providers";
 import { computeTowerSaturation, saturationLeverageSentence } from "@/lib/towerSaturation";
 import { MIREYE_FIELDS } from "@/constants/fields";
 import type { ScoreResponse, IntelligenceLayers, MireyeFields, SiteScore } from "@/lib/types";
@@ -54,8 +54,6 @@ type State = typeof SignalRentState.State;
 const registry = new EvidenceRegistry();
 registry.addProvider(mireyeProvider);
 registry.addProvider(openCellIdProvider);
-registry.addProvider(fccAsrProvider);
-registry.addProvider(fccUlsProvider);
 const unwrap = (v: any) => v?.structuredContent ?? v?.data ?? v?.content ?? v;
 const NOTABLE_ADDRESS_FACTS: Array<{ pattern: RegExp; facts: string[]; category: EvidenceCategory }> = [
   {
@@ -135,8 +133,11 @@ async function collectNode(state: State) {
     ReturnType<typeof registry.providerList>[number],
     EvidenceRequest[]
   >();
-  for (const request of state.plannerOutput) {
-    for (const provider of await registry.providersFor(request)) {
+  const allAssignments = await Promise.all(
+    state.plannerOutput.map(async (request) => ({ request, providers: await registry.providersFor(request) })),
+  );
+  for (const { request, providers } of allAssignments) {
+    for (const provider of providers) {
       const requests = assignments.get(provider) ?? [];
       requests.push(request);
       assignments.set(provider, requests);
@@ -214,9 +215,8 @@ async function scoreNode(state: State) {
   }
   const fields = fieldMap as unknown as MireyeFields;
   const opencellEvidence = state.evidence.find((e) => e.provider === "opencellid");
-  const asrEvidence = state.evidence.find((e) => e.provider === "fcc-asr");
   const opencellData = opencellEvidence?.rawData as { cells: Array<Record<string, unknown>>; carriersPresent: string[]; error?: string } | undefined;
-  const structureType = asrEvidence?.rawData?.nearestStructure?.structureType ?? (fieldMap["nearest_antenna_structure_type"] as string | null) ?? null;
+  const structureType = (fieldMap["nearest_antenna_structure_type"] as string | null) ?? null;
   const carriersPresent = opencellData?.carriersPresent ?? [];
   const saturation = computeTowerSaturation(structureType, carriersPresent);
   return { deterministicScore: computeSiteScore(fields, carriersPresent, structureType), rawFields: fields, opencellData, towerSaturationSummary: saturation ? saturationLeverageSentence(saturation) : "" };
