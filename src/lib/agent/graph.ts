@@ -213,7 +213,7 @@ async function scoreNode(state: State) {
   const opencellData = opencellEvidence?.rawData as { cells: Array<Record<string, unknown>>; carriersPresent: string[]; error?: string } | undefined;
   return { deterministicScore: computeSiteScore(fields, opencellData?.carriersPresent ?? []), rawFields: fields, opencellData };
 }
-function parseModelResponse(content: unknown) {
+export function parseModelResponse(content: unknown) {
   const text = Array.isArray(content)
     ? content
         .map((part: any) =>
@@ -225,15 +225,20 @@ function parseModelResponse(content: unknown) {
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i)?.[1];
   const candidate = tagged ?? fenced ?? text.trim();
   if (!candidate) throw new Error("Reasoner returned empty text");
+  const extractReasoning = () => text.match(/<reasoning>([\s\S]*?)<\/reasoning>/i)?.[1]?.trim() ?? "";
+  const validateCandidate = (value: unknown) => {
+    const raw = value as any;
+    const parsed = raw?.score ? raw : raw?.result?.score ? raw.result : raw?.output?.score ? raw.output : raw;
+    if (!parsed.ok) parsed.ok = true;
+    const normalized = normalizeScoreResponse(parsed) as Record<string, unknown>;
+    const validation = parseReasoningResponse(normalized);
+    if (!validation.success) throw new Error(`Reasoner returned invalid structured output: ${validation.error.issues.map((issue) => issue.path.join(".")).join(", ")}`);
+    return { parsed: validation.data as unknown as Record<string, unknown>, reasoning: extractReasoning() };
+  };
+
   try {
     const raw = JSON.parse(candidate);
-    const parsed = raw?.score
-      ? raw
-      : raw?.result?.score
-        ? raw.result
-        : raw?.output?.score
-          ? raw.output
-          : raw;
+    const parsed = raw?.score ? raw : raw?.result?.score ? raw.result : raw?.output?.score ? raw.output : raw;
     // Inject ok: true if missing — the model won't return it but our schema requires it
     if (!parsed.ok) parsed.ok = true;
     const normalized = normalizeScoreResponse(parsed) as Record<string, unknown>;
@@ -249,6 +254,15 @@ function parseModelResponse(content: unknown) {
         text.match(/<reasoning>([\s\S]*?)<\/reasoning>/i)?.[1]?.trim() ?? "",
     };
   } catch (error) {
+    const stripped = candidate.replace(/,?\s*"reasoning"\s*:\s*"[\s\S]*?(?<!\\)"(?=\s*[,}])/, "").replace(/,?\s*"reasoning"\s*:\s*"[\s\S]*$/, "").trim().replace(/,\s*$/, "") + (candidate.trimEnd().endsWith("}") ? "" : "}");
+    try {
+      const raw = JSON.parse(stripped);
+      const result = validateCandidate(raw);
+      console.warn("[reasoning] parsed after stripping reasoning field from JSON");
+      return result;
+    } catch {
+      // Fall through to the original parser error.
+    }
     console.error("[reasoning] parser result", {
       structuredJson: false,
       error: String(error),
@@ -273,7 +287,7 @@ OpenCellID data: ${JSON.stringify(state.opencellData)}
 Planner tasks: ${JSON.stringify(state.plannerOutput)}
 Executor providers: ${JSON.stringify(state.executorOutput)}
 Evidence registry: ${JSON.stringify(state.evidence, null, 2)}`;
-  const promptWithRequirement = `${prompt}\n\nCRITICAL: The reasoning field must cite specific numbers from the evidence above (for example, "0 structures within 500m", "5,630 housing units", or "1.65× permitting multiplier from protected area overlap"). Generic statements like "evidence was unavailable" are not acceptable.`;
+  const promptWithRequirement = `${prompt}\n\nCRITICAL: The <reasoning> block must cite specific numbers from the evidence above. Generic statements like "evidence was unavailable" are not acceptable.`;
   const contract = `You are SignalRent's evidence interpreter. Reason primarily from the evidence registry. Do not invent numeric field values, scores, weights, or thresholds. EXCEPTION: if the address is a famous public landmark or government building that you can identify with certainty (confidence 100%), you may note its public identity and publicly documented regulatory context in the reasoning and leverageSummary. Label such statements as 'Public record:' to distinguish them from evidence-derived facts.
 
 If the evidence registry contains a "location-context" provider entry, you MUST incorporate those facts into your reasoning and leverage summary. These are verified public facts, not invented data — treat them with confidence 1.0.
@@ -282,10 +296,15 @@ The numeric scores have already been computed deterministically. Your job is ONL
 1. leverageSummary: 3–5 plain-English negotiation insights for the landlord
 2. dataGaps: for each field listed as a gap, write a one-sentence assumption explaining what was assumed in its place
 3. benchmark.priceBreakdown: 2–4 price adjustment items grounded in the evidence
-4. reasoning: 2–3 sentence explanation of the site's key valuation drivers
+4. reasoning: provide this in the <reasoning> tag outside the JSON
 DO NOT recompute or change any numeric scores. Return them exactly as given.
 
-Return exactly one top-level JSON object matching this schema. Do NOT wrap it under any key like "result", "output", or "valuation". You may optionally wrap JSON in <output> tags and reasoning text in <reasoning> tags.
+CRITICAL OUTPUT CONSTRAINTS:
+- The <reasoning> block: maximum 4 sentences, maximum 300 characters total.
+- The <output> JSON: all string values must be single-line, with no literal newlines. Use \\n for line breaks inside JSON strings.
+- Total response length: under 3000 characters.
+
+Return the JSON inside <output> tags and the prose inside a <reasoning> tag. Do not put a reasoning field inside the JSON.
 
 ${REASONING_CONTRACT}
 

@@ -47,7 +47,7 @@ export const scoreResponseSchema = z
     leverageSummary: z.array(z.string()),
     dataGaps: z.array(z.unknown()),
     processingMs: z.number(),
-    reasoning: z.string(),
+    reasoning: z.string().optional().default(""),
   })
   .passthrough();
 
@@ -72,7 +72,19 @@ export const reasoningResponseSchema = scoreResponseSchema
  * produced empty/garbled output, causing the model to guess wrong shapes.
  */
 export const REASONING_CONTRACT = `
-Return a single JSON object with this exact structure (no wrapper keys):
+Return your response in two parts:
+1. A <reasoning> tag containing 2-4 sentences of plain prose explaining the valuation. Cite specific field values. No markdown. This goes OUTSIDE the JSON.
+2. A <output> tag containing the JSON object below. The JSON must be valid: no unescaped quotes or literal newlines inside string values.
+
+Example structure:
+<reasoning>
+Two to four plain English sentences here. No quotes around technical values unless they are escaped.
+</reasoning>
+<output>
+{ ...the JSON object... }
+</output>
+
+The JSON object has this exact structure (no wrapper keys):
 
 {
   "score": {
@@ -150,7 +162,6 @@ Return a single JSON object with this exact structure (no wrapper keys):
       "assumption": "<string: documented assumption>"
     }
   ],
-  "reasoning": "<2-3 sentences explaining which evidence was most decisive for Coverage Necessity, what drives the permitting multiplier, and one key landlord insight. Be specific and cite actual field values; this is shown directly to the user.>"
 }
 
 SCORING GUIDANCE (use evidence; do not invent):
