@@ -210,7 +210,7 @@ function parseModelResponse(content: unknown) {
 }
 async function reasonNode(state: State) {
   const model = new ChatGoogleGenerativeAI({
-    model: "gemini-2.0-flash-lite",
+    model: "gemini-3.1-flash-lite",
     temperature: 0,
     apiKey: process.env.GEMINI_API_KEY,
   });
