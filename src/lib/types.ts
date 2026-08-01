@@ -223,6 +223,7 @@ export interface ScoreResponse {
   processingMs: number;
   reasoning: string;
   intelligence?: IntelligenceLayers;
+  rawFields?: Record<string, unknown>;
 }
 
 export interface DataCitation { source: string; url: string; retrievedAt: string; claim?: string; }

@@ -18,11 +18,11 @@ export function computeTowerSaturation(structureType: string | null | undefined,
   const current = carriersPresent.length;
   const ratio = Math.min(current / max, 1);
   const isSaturated = ratio >= .75;
-  return { saturationRatio: ratio, isSaturated, currentTenants: current, maxTenants: max, structureType: type, label: `${type} tower: ${current}/${max} tenants (${Math.round(ratio * 100)}% capacity)`, scoringImpact: isSaturated ? "positive" : "negative", pointAdjustment: isSaturated ? 12 : -8 };
+  return { saturationRatio: ratio, isSaturated, currentTenants: current, maxTenants: max, structureType: type, label: `${type} tower: ${Math.min(current, max)}/${max} tenants (${Math.round(ratio * 100)}% capacity)`, scoringImpact: isSaturated ? "positive" : "negative", pointAdjustment: isSaturated ? 12 : -8 };
 }
 
 export function saturationLeverageSentence(sat: TowerSaturation): string {
   return sat.isSaturated
-    ? `The nearest tower is a ${sat.structureType} at ${Math.round(sat.saturationRatio * 100)}% structural capacity (${sat.currentTenants}/${sat.maxTenants} tenants) — it is saturated and cannot absorb another carrier.`
-    : `The nearest tower is a ${sat.structureType} at ${Math.round(sat.saturationRatio * 100)}% capacity (${sat.currentTenants}/${sat.maxTenants} tenants) — it has room for another carrier.`;
+    ? `The nearest tower is a ${sat.structureType} at ${Math.round(sat.saturationRatio * 100)}% structural capacity (${Math.min(sat.currentTenants, sat.maxTenants)}/${sat.maxTenants} tenants) — it is saturated and cannot absorb another carrier.`
+    : `The nearest tower is a ${sat.structureType} at ${Math.round(sat.saturationRatio * 100)}% capacity (${Math.min(sat.currentTenants, sat.maxTenants)}/${sat.maxTenants} tenants) — it has room for another carrier.`;
 }

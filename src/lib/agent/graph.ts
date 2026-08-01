@@ -75,7 +75,7 @@ const NOTABLE_ADDRESS_FACTS: Array<{ pattern: RegExp; facts: string[]; category:
 
 async function resolveNode(state: State) {
   if (process.env.SIGNALRENT_MOCK_MIREYE === "true") {
-    return { resolvedLat: MOCK_LOCATION.lat, resolvedLng: MOCK_LOCATION.lng, displayAddress: `${state.address} ${MOCK_LOCATION.displayAddress}` };
+    return { resolvedLat: MOCK_LOCATION.lat, resolvedLng: MOCK_LOCATION.lng, displayAddress: MOCK_LOCATION.displayAddress };
   }
   const response = unwrap(
     await mcpTool("mireye_lookup", {
@@ -412,7 +412,7 @@ async function validateNode(state: State) {
   const annotatedReasoning = [result.reasoning, ...findings].filter(Boolean).join(" ");
   const leverageSummary = [...(result.leverageSummary ?? [])];
   if (state.towerSaturationSummary && !leverageSummary.some((s) => /saturat|tenant|capacity|co.?locat/i.test(s))) leverageSummary.unshift(state.towerSaturationSummary);
-  return { result: { ...result, score: lockedScore ? { ...lockedScore, dataGaps: result.score.dataGaps?.length ? result.score.dataGaps : lockedScore.dataGaps } : result.score, leverageSummary, reasoning: annotatedReasoning } };
+  return { result: { ...result, rawFields: Object.fromEntries(Object.entries(state.rawFields ?? {}).filter(([, value]) => value !== null)), score: lockedScore ? { ...lockedScore, dataGaps: result.score.dataGaps?.length ? result.score.dataGaps : lockedScore.dataGaps } : result.score, leverageSummary, reasoning: annotatedReasoning } };
 }
 
 export const graph = new StateGraph(SignalRentState)
