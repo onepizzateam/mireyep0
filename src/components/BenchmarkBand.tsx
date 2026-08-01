@@ -82,11 +82,11 @@ export default function BenchmarkBand({
             </div>
             {benchmark.priceBreakdown.map((adj, idx) => {
               const sign = adj.direction === "positive" ? "+" : adj.direction === "negative" ? "−" : "";
-              const pct = Math.round(Math.abs(adj.percent) * 100);
-              const amt = Math.abs(adj.amount).toLocaleString();
+              const pct = displayNumber(Math.abs(adj.percent) * 100);
+              const amt = displayNumber(Math.abs(adj.amount));
               return (
                 <div key={idx} className="flex justify-between gap-3 text-xs font-mono text-gray-700 border-t border-gray-200 pt-2">
-                  <span className="flex-1">{adj.label}</span>
+                  <span className="flex-1">{displayText(adj.label ?? adj.fieldName, "Unknown adjustment")}</span>
                   <span className="whitespace-nowrap text-gray-900">{sign}{pct}% · {sign}${amt}</span>
                 </div>
               );
