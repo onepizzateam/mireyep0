@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { SiteScore } from "@/lib/types";
+import { displayText } from "@/lib/display";
 
 interface FieldDisclosureProps {
   score: SiteScore;
@@ -83,7 +84,7 @@ export default function FieldDisclosure({ score }: FieldDisclosureProps) {
                     {allFields.map((field, idx) => (
                       <tr key={idx} className="border-b border-gray-100">
                         <td className="py-3 px-3 text-xs font-mono text-gray-700">
-                          {field.fieldName}
+                          {displayText(field.fieldName)}
                         </td>
                         <td className="py-3 px-3 text-xs text-gray-600">
                           {field.value === null
@@ -104,11 +105,11 @@ export default function FieldDisclosure({ score }: FieldDisclosureProps) {
                                   : "bg-gray-100 text-gray-800"
                             }`}
                           >
-                            {field.impact}
+                            {displayText(field.impact)}
                           </span>
                         </td>
                         <td className="py-3 px-3 text-xs text-gray-600">
-                          {field.explanation}
+                          {displayText(field.explanation)}
                         </td>
                       </tr>
                     ))}

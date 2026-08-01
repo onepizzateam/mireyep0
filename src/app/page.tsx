@@ -17,6 +17,7 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const isAmbiguousAddress = error?.startsWith("Address is ambiguous:") ?? false;
 
   const handleScoreRequest = async (request: ScoreRequest) => {
     setIsLoading(true);
@@ -120,7 +121,8 @@ export default function Home() {
         {/* Error Message */}
         {error && (
           <div className="mb-8 w-full max-w-2xl mx-auto bg-white border border-red-300 rounded p-4">
-            <p className="text-sm font-mono text-red-900">{error}</p>
+            <p className="text-sm font-semibold text-red-900">{isAmbiguousAddress ? "Clarification needed" : "Valuation unavailable"}</p>
+            <p className="text-sm font-mono text-red-900 mt-2">{error.replace(/^Address is ambiguous:\s*/i, "Did you mean: ")}</p>
           </div>
         )}
 

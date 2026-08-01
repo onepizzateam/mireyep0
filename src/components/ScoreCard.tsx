@@ -1,6 +1,7 @@
 "use client";
 
 import { SiteScore } from "@/lib/types";
+import { displayNumber, displayText } from "@/lib/display";
 
 interface ScoreCardProps {
   score: SiteScore;
@@ -15,14 +16,14 @@ export default function ScoreCard({ score }: ScoreCardProps) {
           <h3 className="text-xs font-medium text-gray-600 uppercase mb-2">Site Score</h3>
           <div className="flex items-baseline gap-1">
             <p className="text-5xl font-mono font-bold" style={{color: '#FF6600'}}>
-              {Math.round(score.baseline)}
+              {displayNumber(score.baseline)}
             </p>
             <p className="text-xl font-mono text-gray-400">/100</p>
           </div>
           
           {/* Secondary: Composite Score (unclamped) */}
           <p className="text-sm font-mono text-gray-700 mt-2">
-            Composite: <span className="font-bold">{Math.round(score.composite)}</span>
+            Composite: <span className="font-bold">{displayNumber(score.composite)}</span>
           </p>
           
           {/* Multiplier explanation */}
@@ -55,10 +56,10 @@ export default function ScoreCard({ score }: ScoreCardProps) {
         <div>
           <div className="flex justify-between items-center mb-1">
             <span className="text-xs font-medium text-gray-700">
-              {score.dimensions.coverageNecessity.label}
+              {displayText(score.dimensions.coverageNecessity.label)}
             </span>
             <span className="text-xs font-mono text-gray-900">
-              {Math.round(score.dimensions.coverageNecessity.raw)}
+              {displayNumber(score.dimensions.coverageNecessity.raw)}
             </span>
           </div>
           <div className="w-full" style={{height: '2px', backgroundColor: '#E5E5E5'}}>
@@ -71,7 +72,7 @@ export default function ScoreCard({ score }: ScoreCardProps) {
             />
           </div>
           <p className="text-xs text-gray-500 mt-1">
-            {(score.dimensions.coverageNecessity.weight * 100).toFixed(0)}% weight
+            {displayNumber(score.dimensions.coverageNecessity.weight * 100)}% weight
           </p>
         </div>
 
@@ -79,10 +80,10 @@ export default function ScoreCard({ score }: ScoreCardProps) {
         <div>
           <div className="flex justify-between items-center mb-1">
             <span className="text-xs font-medium text-gray-700">
-              {score.dimensions.subscriberValue.label}
+              {displayText(score.dimensions.subscriberValue.label)}
             </span>
             <span className="text-xs font-mono text-gray-900">
-              {Math.round(score.dimensions.subscriberValue.raw)}
+              {displayNumber(score.dimensions.subscriberValue.raw)}
             </span>
           </div>
           <div className="w-full" style={{height: '2px', backgroundColor: '#E5E5E5'}}>
@@ -95,7 +96,7 @@ export default function ScoreCard({ score }: ScoreCardProps) {
             />
           </div>
           <p className="text-xs text-gray-500 mt-1">
-            {(score.dimensions.subscriberValue.weight * 100).toFixed(0)}% weight
+            {displayNumber(score.dimensions.subscriberValue.weight * 100)}% weight
           </p>
         </div>
 
@@ -103,10 +104,10 @@ export default function ScoreCard({ score }: ScoreCardProps) {
         <div>
           <div className="flex justify-between items-center mb-1">
             <span className="text-xs font-medium text-gray-700">
-              {score.dimensions.constructionCost.label}
+              {displayText(score.dimensions.constructionCost.label)}
             </span>
             <span className="text-xs font-mono text-gray-900">
-              {Math.round(score.dimensions.constructionCost.raw)}
+              {displayNumber(score.dimensions.constructionCost.raw)}
             </span>
           </div>
           <div className="w-full" style={{height: '2px', backgroundColor: '#E5E5E5'}}>
@@ -119,7 +120,7 @@ export default function ScoreCard({ score }: ScoreCardProps) {
             />
           </div>
           <p className="text-xs text-gray-500 mt-1">
-            {(score.dimensions.constructionCost.weight * 100).toFixed(0)}% weight
+            {displayNumber(score.dimensions.constructionCost.weight * 100)}% weight
           </p>
         </div>
       </div>
@@ -128,7 +129,7 @@ export default function ScoreCard({ score }: ScoreCardProps) {
       <div className="border-t pt-4 flex justify-start">
         <div>
           <p className="text-xs font-medium text-gray-600 uppercase">Site Type</p>
-          <p className="text-sm font-mono text-gray-900 capitalize mt-1">{score.siteType}</p>
+          <p className="text-sm font-mono text-gray-900 capitalize mt-1">{displayText(score.siteType)}</p>
         </div>
       </div>
     </div>
