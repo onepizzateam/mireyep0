@@ -148,9 +148,22 @@ Return ONLY valid JSON, with exactly: selectedFields (field names), rationale (o
   return { plannerOutput, plannerRationale: plannerResult.rationale, hypotheses: plannerResult.hypotheses ?? [] };
 }
 async function collectNode(state: State) {
+  const resolvedLat = Number.isFinite(state.resolvedLat)
+    ? state.resolvedLat
+    : process.env.SIGNALRENT_MOCK_MIREYE === "true"
+      ? MOCK_LOCATION.lat
+      : state.lat;
+  const resolvedLng = Number.isFinite(state.resolvedLng)
+    ? state.resolvedLng
+    : process.env.SIGNALRENT_MOCK_MIREYE === "true"
+      ? MOCK_LOCATION.lng
+      : state.lng;
+  if (!Number.isFinite(resolvedLat) || !Number.isFinite(resolvedLng)) {
+    return { error: "No valid coordinates were resolved for this site." };
+  }
   const location: Location = {
-    lat: state.resolvedLat,
-    lng: state.resolvedLng,
+    lat: resolvedLat as number,
+    lng: resolvedLng as number,
     displayAddress: state.displayAddress,
   };
   const assignments = new Map<
