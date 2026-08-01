@@ -151,7 +151,7 @@ export default function Home() {
                   <strong>Carrier:</strong> {results.carrier}
                 </p>
               )}
-              <p className="text-xs text-gray-500 mt-2">
+              <p className="text-xs text-gray-900 mt-2">
                 Processed in {results.processingMs}ms
               </p>
             </div>
@@ -226,7 +226,7 @@ export default function Home() {
               >
                 {isDownloading ? "Generating PDF..." : "Download Report (PDF)"}
               </button>
-              <p className="text-xs text-gray-500 font-mono">
+              <p className="text-xs text-gray-900 font-mono">
                 Payment integration coming soon — button provided for demonstration.
               </p>
             </div>

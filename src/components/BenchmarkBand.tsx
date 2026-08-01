@@ -26,7 +26,7 @@ export default function BenchmarkBand({
     <div className="w-full max-w-2xl mx-auto bg-white border border-gray-200 p-6 space-y-6" style={{borderRadius: '4px'}}>
       <div>
         <h3 className="text-xs font-medium text-gray-900 uppercase mb-3">Market Benchmark Range</h3>
-        <p className="text-xs text-gray-500 mb-4 font-mono">{benchmark.siteType.toUpperCase()} · {benchmark.scoreBand === "high" ? "High" : benchmark.scoreBand === "mid" ? "Moderate" : "Limited"} leverage</p>
+        <p className="text-xs text-gray-900 mb-4 font-mono">{benchmark.siteType.toUpperCase()} · {benchmark.scoreBand === "high" ? "High" : benchmark.scoreBand === "mid" ? "Moderate" : "Limited"} leverage</p>
 
         {/* Visual band */}
         <div className="relative mb-6">

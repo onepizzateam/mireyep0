@@ -217,7 +217,7 @@ export default function AddressForm({ onSubmit, onSmokeTest, isLoading }: Addres
         />
       )}
       {resolved && (
-        <p className="text-xs text-gray-400 font-mono -mt-1">
+        <p className="text-xs text-gray-900 font-mono -mt-1">
           Drag the pin to adjust the exact location.
         </p>
       )}

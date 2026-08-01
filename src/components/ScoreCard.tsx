@@ -18,20 +18,20 @@ export default function ScoreCard({ score }: ScoreCardProps) {
             <p className="text-5xl font-mono font-bold" style={{color: '#FF6600'}}>
               {displayNumber(score.baseline)}
             </p>
-            <p className="text-xl font-mono text-gray-400">/100</p>
+            <p className="text-xl font-mono text-gray-900">/100</p>
           </div>
           
           {/* Secondary: Leverage-adjusted composite (unclamped) */}
-          <p className="text-sm font-mono text-gray-500 mt-2">
+          <p className="text-sm font-mono text-gray-900 mt-2">
             Leverage-adjusted: <span className="font-bold text-gray-900">{displayNumber(score.composite)}</span>
-            <span className="text-xs text-gray-400"> (unclamped)</span>
+            <span className="text-xs text-gray-900"> (unclamped)</span>
           </p>
           
           {/* Multiplier explanation */}
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-gray-900 mt-1">
             Permitting friction: <span className="font-mono font-bold">{score.multiplier.toFixed(2)}×</span>
           </p>
-          <p className="text-xs text-gray-500">
+          <p className="text-xs text-gray-900">
             Higher = harder for carriers to replace this site. Score above 100 means exceptional leverage.
           </p>
         </div>
@@ -72,7 +72,7 @@ export default function ScoreCard({ score }: ScoreCardProps) {
               }}
             />
           </div>
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-gray-900 mt-1">
             {displayNumber(score.dimensions.coverageNecessity.weight * 100)}% weight
           </p>
         </div>
@@ -96,7 +96,7 @@ export default function ScoreCard({ score }: ScoreCardProps) {
               }}
             />
           </div>
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-gray-900 mt-1">
             {displayNumber(score.dimensions.subscriberValue.weight * 100)}% weight
           </p>
         </div>
@@ -120,7 +120,7 @@ export default function ScoreCard({ score }: ScoreCardProps) {
               }}
             />
           </div>
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-gray-900 mt-1">
             {displayNumber(score.dimensions.constructionCost.weight * 100)}% weight
           </p>
         </div>

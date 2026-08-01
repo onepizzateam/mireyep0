@@ -88,7 +88,7 @@ export default function FieldDisclosure({ score }: FieldDisclosureProps) {
                         </td>
                         <td className="py-3 px-3 text-xs text-gray-900">
                           {field.value === null || field.value === undefined
-                            ? <span className="text-gray-400 italic">missing</span>
+                            ? <span className="text-gray-900 italic">missing</span>
                             : typeof field.value === "boolean"
                               ? field.value
                                 ? "Yes"
@@ -130,7 +130,7 @@ export default function FieldDisclosure({ score }: FieldDisclosureProps) {
               {score.dataGaps.map((gap, idx) => (
                 <div key={idx}>
                   <p className="font-mono text-xs">• {gap.field}</p>
-                  <p className="text-xs text-gray-500 ml-3">Impact: {gap.impact} — {gap.assumption}</p>
+                  <p className="text-xs text-gray-900 ml-3">Impact: {gap.impact} — {gap.assumption}</p>
                 </div>
               ))}
             </div>
