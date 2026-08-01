@@ -197,7 +197,7 @@ export default function Home() {
 
             {/* Field Disclosure */}
             <FieldDisclosure score={results.score} />
-            <AgentReasoning reasoning={results.reasoning} />
+            <AgentReasoning reasoning={results.reasoning} evidence={{ fieldsFetched: 60, fieldsNull: results.score.dataGaps?.length ?? 0 }} />
             <ValuationAssistant valuation={results} />
 
             {/* CTA Card */}

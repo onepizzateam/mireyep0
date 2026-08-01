@@ -6,6 +6,7 @@ import {
   EvidenceRegistry,
   discover,
   type EvidenceCategory,
+  type Evidence,
   type EvidenceRequest,
   type Location,
 } from "./evidence";
@@ -52,6 +53,20 @@ const registry = new EvidenceRegistry();
 registry.addProvider(mireyeProvider);
 registry.addProvider(openCellIdProvider);
 const unwrap = (v: any) => v?.structuredContent ?? v?.data ?? v?.content ?? v;
+const NOTABLE_ADDRESS_FACTS: Array<{ pattern: RegExp; facts: string[]; category: EvidenceCategory }> = [
+  {
+    pattern: /1600\s+pennsylvania\s+ave/i,
+    facts: [
+      "This is the address of the White House, the official residence and workplace of the President of the United States.",
+      "The site is within a National Security Area with extreme FAA airspace restrictions (P-56A/B prohibited airspace).",
+      "The surrounding area is managed by the National Park Service (President's Park).",
+      "New tower construction within or adjacent to this site is functionally impossible due to federal security mandates.",
+      "The site sits within one of the most heavily regulated telecommunications zones in the United States.",
+      "Any lease agreement here would involve federal agency review and potentially national security clearance.",
+    ],
+    category: "regulatory",
+  },
+];
 
 async function resolveNode(state: State) {
   const response = unwrap(
@@ -74,6 +89,21 @@ async function resolveNode(state: State) {
     resolvedLng: Number(location.lng),
     displayAddress: location.displayAddress ?? location.label ?? state.address,
   };
+}
+async function enrichLocationNode(state: State) {
+  const entry = NOTABLE_ADDRESS_FACTS.find((candidate) => candidate.pattern.test(state.displayAddress));
+  if (!entry) return { evidence: [] };
+  const evidence: Evidence = {
+    id: `location-context:${state.resolvedLat}:${state.resolvedLng}`,
+    provider: "location-context",
+    category: entry.category,
+    summary: `Notable address context: ${entry.facts[0]}`,
+    confidence: 1,
+    importance: "high",
+    provenance: { source: "SignalRent location enrichment", retrievedAt: new Date().toISOString() },
+    timestamp: new Date().toISOString(), rawData: null, derivedFacts: entry.facts, citations: [],
+  };
+  return { evidence: [evidence] };
 }
 async function discoverNode() {
   const capabilities = await discover(registry);
@@ -161,9 +191,21 @@ async function assessEvidenceNode() {
 async function scoreNode(state: State) {
   const fieldMap: Record<string, unknown> = {};
   for (const item of state.evidence) {
-    if (item.provider === "mireye" && item.id.startsWith("mireye:")) {
+    if (item.provider !== "mireye") continue;
+    if (item.id.startsWith("mireye:")) {
       const raw = item.rawData;
-      fieldMap[item.id.replace("mireye:", "")] = raw != null && typeof raw === "object" && "value" in raw ? (raw as { value: unknown }).value : raw;
+      fieldMap[item.id.slice("mireye:".length)] = raw != null && typeof raw === "object" && "value" in raw ? (raw as { value: unknown }).value : raw;
+    }
+    for (const fact of item.derivedFacts ?? []) {
+      const colonIdx = fact.indexOf(":");
+      if (colonIdx > 0) {
+        const fieldName = fact.slice(0, colonIdx).trim();
+        const valueStr = fact.slice(colonIdx + 1).trim();
+        if (!(fieldName in fieldMap)) fieldMap[fieldName] = Number.isNaN(Number(valueStr)) ? valueStr : Number(valueStr);
+      } else if (!(fact in fieldMap)) {
+        const raw = item.rawData;
+        fieldMap[fact] = raw != null && typeof raw === "object" && "value" in raw ? (raw as { value: unknown }).value : raw;
+      }
     }
   }
   const fields = fieldMap as unknown as MireyeFields;
@@ -232,7 +274,11 @@ Planner tasks: ${JSON.stringify(state.plannerOutput)}
 Executor providers: ${JSON.stringify(state.executorOutput)}
 Evidence registry: ${JSON.stringify(state.evidence, null, 2)}`;
   const promptWithRequirement = `${prompt}\n\nCRITICAL: The reasoning field must cite specific numbers from the evidence above (for example, "0 structures within 500m", "5,630 housing units", or "1.65× permitting multiplier from protected area overlap"). Generic statements like "evidence was unavailable" are not acceptable.`;
-  const contract = `You are SignalRent's evidence interpreter. The numeric scores have already been computed deterministically. Your job is ONLY to provide:
+  const contract = `You are SignalRent's evidence interpreter. Reason primarily from the evidence registry. Do not invent numeric field values, scores, weights, or thresholds. EXCEPTION: if the address is a famous public landmark or government building that you can identify with certainty (confidence 100%), you may note its public identity and publicly documented regulatory context in the reasoning and leverageSummary. Label such statements as 'Public record:' to distinguish them from evidence-derived facts.
+
+If the evidence registry contains a "location-context" provider entry, you MUST incorporate those facts into your reasoning and leverage summary. These are verified public facts, not invented data — treat them with confidence 1.0.
+
+The numeric scores have already been computed deterministically. Your job is ONLY to provide:
 1. leverageSummary: 3–5 plain-English negotiation insights for the landlord
 2. dataGaps: for each field listed as a gap, write a one-sentence assumption explaining what was assumed in its place
 3. benchmark.priceBreakdown: 2–4 price adjustment items grounded in the evidence
@@ -336,6 +382,7 @@ async function validateNode(state: State) {
 
 export const graph = new StateGraph(SignalRentState)
   .addNode("resolveLocation", resolveNode)
+  .addNode("enrichLocation", enrichLocationNode)
   .addNode("discoverCapabilities", discoverNode)
   .addNode("planEvidence", plannerNode)
   .addNode("collectEvidence", collectNode)
@@ -345,8 +392,9 @@ export const graph = new StateGraph(SignalRentState)
   .addNode("validate", validateNode)
   .addEdge("__start__", "resolveLocation")
   .addConditionalEdges("resolveLocation", (s) =>
-    s.error ? "__end__" : "discoverCapabilities",
+    s.error ? "__end__" : "enrichLocation",
   )
+  .addEdge("enrichLocation", "discoverCapabilities")
   .addEdge("discoverCapabilities", "planEvidence")
   .addEdge("planEvidence", "collectEvidence")
   .addEdge("collectEvidence", "assessEvidence")
