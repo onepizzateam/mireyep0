@@ -9,6 +9,7 @@ import RateComparisonComponent from "@/components/RateComparison";
 import DataGapBanner from "@/components/DataGapBanner";
 import FieldDisclosure from "@/components/FieldDisclosure";
 import { AgentReasoning } from "@/components/AgentReasoning";
+import ValuationAssistant from "@/components/ValuationAssistant";
 import { ScoreRequest, ScoreResponse, ScoreErrorResponse } from "@/lib/types";
 import { parseScoreResponse } from "@/lib/response-schema";
 
@@ -197,6 +198,7 @@ export default function Home() {
             {/* Field Disclosure */}
             <FieldDisclosure score={results.score} />
             <AgentReasoning reasoning={results.reasoning} />
+            <ValuationAssistant valuation={results} />
 
             {/* CTA Card */}
             <div className="w-full max-w-2xl mx-auto bg-white border border-gray-200 p-6 text-center space-y-4" style={{borderRadius: '4px'}}>

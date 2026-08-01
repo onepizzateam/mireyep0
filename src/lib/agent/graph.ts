@@ -10,6 +10,7 @@ import {
   type Location,
 } from "./evidence";
 import { mireyeProvider, openCellIdProvider } from "./providers";
+import { MIREYE_FIELDS } from "@/constants/fields";
 import type { ScoreResponse, IntelligenceLayers } from "@/lib/types";
 import {
   normalizeScoreResponse,
@@ -75,26 +76,15 @@ async function discoverNode() {
   return { capabilities };
 }
 async function plannerNode() {
-  const plannerOutput: EvidenceRequest[] = [
-    {
-      concept: "population and demand",
-      category: "population",
-      importance: "high",
-      reason: "estimate subscriber value",
-    },
-    {
-      concept: "terrain, hazards, utilities and access",
-      category: "hazard",
-      importance: "high",
-      reason: "estimate construction and permitting friction",
-    },
-    {
-      concept: "nearby towers, carriers and coverage",
-      category: "coverage",
-      importance: "high",
-      reason: "estimate coverage necessity and competition",
-    },
-  ];
+  const plannerOutput: EvidenceRequest[] = MIREYE_FIELDS.map((field) => ({
+    concept: field,
+    category: field.includes("tower") || field.includes("antenna") ? "competition" :
+      field.includes("wetland") || field.includes("habitat") || field.includes("zoning") ? "regulatory" :
+      field.includes("housing") || field.includes("poi") || field.includes("lodging") ? "population" :
+      field.includes("slope") || field.includes("soil") || field.includes("seismic") || field.includes("flood") ? "terrain" : "infrastructure",
+    importance: "high",
+    reason: "minimum evidence baseline for the scoring model",
+  }));
   return { plannerOutput };
 }
 async function collectNode(state: State) {
@@ -232,9 +222,9 @@ CRITICAL FIELD REQUIREMENTS:
 - score.dimensions.subscriberValue.label MUST be exactly "Subscriber Value"  
 - score.dimensions.constructionCost.label MUST be exactly "Construction Cost"
 - score.dimensions.coverageNecessity.weight MUST be 0.40
-- score.dimensions.subscriberValue.weight MUST be 0.30
-- score.dimensions.constructionCost.weight MUST be 0.30
-- score.baseline = (coverageNecessity.raw * 0.40) + (subscriberValue.raw * 0.30) + (constructionCost.raw * 0.30), a number 0-100
+- score.dimensions.subscriberValue.weight MUST be 0.35
+- score.dimensions.constructionCost.weight MUST be 0.25
+- score.baseline = (coverageNecessity.raw * 0.40) + (subscriberValue.raw * 0.35) + (constructionCost.raw * 0.25), a number 0-100
 - score.composite = score.baseline * score.permittingFriction.multiplierRaw
 - score.final = Math.min(100, Math.max(0, score.composite))
 - score.multiplier = score.permittingFriction.multiplierRaw
@@ -277,7 +267,25 @@ async function validateNode(state: State) {
       error: `Reasoner returned an incomplete valuation result: ${validation.error.issues.map((issue) => issue.path.join(".")).join(", ")}`,
     };
   }
-  return { result: validation.data as unknown as ScoreResponse };
+  const result = validation.data as unknown as ScoreResponse;
+  const numbers = [result.score.baseline, result.score.multiplier, result.score.composite, result.score.final,
+    result.score.dimensions.coverageNecessity.raw, result.score.dimensions.subscriberValue.raw,
+    result.score.dimensions.constructionCost.raw, result.benchmark.baseValue,
+    result.benchmark.monthlyRange.min, result.benchmark.monthlyRange.max];
+  const invalidNumber = numbers.some((value) => typeof value !== "number" || !Number.isFinite(value));
+  const weights = result.score.dimensions;
+  const validWeights = weights.coverageNecessity.weight === .4 && weights.subscriberValue.weight === .35 && weights.constructionCost.weight === .25;
+  const evidenceText = state.evidence.map((item) => `${item.summary} ${(item.derivedFacts ?? []).join(" ")}`).join(" ").toLowerCase();
+  const supported = (dimension: { topFields: Array<{ fieldName?: string }> }) => dimension.topFields.length > 0 && dimension.topFields.every((field) => field.fieldName && evidenceText.includes(String(field.fieldName).toLowerCase()));
+  const dimensionsSupported = supported(weights.coverageNecessity) && supported(weights.subscriberValue) && supported(weights.constructionCost);
+  const benchmarkTraceable = result.benchmark.priceBreakdown.every((item: any) => item.fieldName && evidenceText.includes(String(item.fieldName).toLowerCase()));
+  const baselineCategories = new Set(state.evidence.flatMap((item) => Array.isArray(item.category) ? item.category : [item.category]));
+  const minimumEvidence = ["competition", "population", "terrain", "regulatory"].every((category) => baselineCategories.has(category as any));
+  const reasoning = result.reasoning ?? "";
+  if (invalidNumber || !validWeights || !dimensionsSupported || !benchmarkTraceable || !minimumEvidence || !reasoning.trim()) {
+    return { error: "Deterministic review failed: valuation evidence or formatting is incomplete." };
+  }
+  return { result };
 }
 
 export const graph = new StateGraph(SignalRentState)

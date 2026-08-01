@@ -98,13 +98,13 @@ Return a single JSON object with this exact structure (no wrapper keys):
       "subscriberValue": {
         "raw": <number 0-100>,
         "label": "Subscriber Value",
-        "weight": 0.30,
+        "weight": 0.35,
         "topFields": [ ... same structure as above ... ]
       },
       "constructionCost": {
         "raw": <number 0-100>,
         "label": "Construction Cost",
-        "weight": 0.30,
+        "weight": 0.25,
         "topFields": [ ... same structure as above ... ]
       }
     },

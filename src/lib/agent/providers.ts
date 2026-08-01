@@ -17,12 +17,16 @@ async function catalog() {
   return catalogPromise;
 }
 function nearestCapability(items: any[], concept: string) { const words = concept.toLowerCase().split(/\s+/); return items.map((item) => ({ item, score: words.reduce((n, w) => n + (JSON.stringify(item).toLowerCase().includes(w) ? 1 : 0), 0) })).sort((a, b) => b.score - a.score).find((x) => x.score > 0)?.item; }
+function resolveCatalogField(items: any[], concept: string) {
+  const exact = items.find((item) => String(item.name ?? item.field) === concept);
+  return exact ?? nearestCapability(items, concept);
+}
 
 export const mireyeProvider: EvidenceProvider = {
   metadata: () => ({ id: "mireye", name: "Mireye", version: "catalog-driven" }),
   discoverCapabilities: async () => { const c = await catalog(); return c.fields.map((f: any, i: number) => ({ id: String(f.name ?? f.field ?? i), label: String(f.name ?? f.field ?? i), description: String(f.description ?? ""), categories: ["unknown"], concepts: String(f.description ?? f.name ?? f.field ?? "").toLowerCase().split(/[^a-z]+/).filter(Boolean) })); },
-  supports: async (request) => Boolean(nearestCapability((await catalog()).fields, request.concept)),
-  collectEvidence: async (location, requests) => { const c = await catalog(); const selected = requests.map((r) => nearestCapability(c.fields, r.concept)).filter(Boolean).map((x: any) => String(x.name ?? x.field)); const key = `${location.lat.toFixed(5)}:${location.lng.toFixed(5)}:${selected.sort().join(",")}`; const cached = evidenceCache.get(key); if (cached && cached.expires > Date.now()) return cached.value; const result = await mcpTool("mireye_fetch", { lat: location.lat, lng: location.lng, fields: selected }); const data = fields(result); const value: Evidence[] = Object.entries(data).map(([key, value]) => ({ id: `mireye:${key}`, provider: "mireye", category: "unknown", summary: `${key}: ${String((value as any)?.value ?? value)}`, confidence: value == null ? .1 : .8, importance: "medium", provenance: { source: "Mireye MCP", retrievedAt: now() }, timestamp: now(), rawData: value, derivedFacts: [key] })); evidenceCache.set(key, { expires: Date.now() + EVIDENCE_TTL_MS, value }); return value; },
+  supports: async (request) => Boolean(resolveCatalogField((await catalog()).fields, request.concept)),
+  collectEvidence: async (location, requests) => { const c = await catalog(); const selected = requests.map((r) => resolveCatalogField(c.fields, r.concept)).filter(Boolean).map((x: any) => String(x.name ?? x.field)); const key = `${location.lat.toFixed(5)}:${location.lng.toFixed(5)}:${selected.sort().join(",")}`; const cached = evidenceCache.get(key); if (cached && cached.expires > Date.now()) return cached.value; const chunks = Array.from({ length: Math.ceil(selected.length / 50) }, (_, i) => selected.slice(i * 50, i * 50 + 50)); const results = await Promise.all(chunks.map((chunk) => mcpTool("mireye_fetch", { lat: location.lat, lng: location.lng, fields: chunk }))); const data = Object.assign({}, ...results.map(fields)); const value: Evidence[] = Object.entries(data).map(([key, value]) => ({ id: `mireye:${key}`, provider: "mireye", category: "unknown", summary: `${key}: ${String((value as any)?.value ?? value)}`, confidence: value == null ? .1 : .8, importance: "medium", provenance: { source: "Mireye MCP", retrievedAt: now() }, timestamp: now(), rawData: value, derivedFacts: [key] })); evidenceCache.set(key, { expires: Date.now() + EVIDENCE_TTL_MS, value }); return value; },
   health: async () => true,
 };
 

@@ -856,6 +856,7 @@ export function computeSiteScore(fields: MireyeFields): SiteScore {
       impact: "medium" as const,
       assumption: "A fallback value was used because this field was unavailable.",
       includes: (value: string) => field.includes(value),
+      toString: () => field,
     })),
   };
 
