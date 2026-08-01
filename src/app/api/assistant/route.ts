@@ -1,17 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import type { ScoreResponse } from "@/lib/types";
-
+interface ChatMessage { role: "user" | "assistant"; content: string; }
+function buildSystemContext(v: ScoreResponse) { return `Address: ${v.displayAddress}; site type: ${v.score.siteType}; final score: ${v.score.final}; baseline: ${v.score.baseline}; multiplier: ${v.score.multiplier}; composite: ${v.score.composite}; dimensions: ${JSON.stringify(v.score.dimensions)}; permitting flags: ${JSON.stringify(v.score.permittingFriction.flags)}; benchmark range: ${JSON.stringify(v.benchmark.monthlyRange)}; leverage summary: ${JSON.stringify(v.leverageSummary)}; data gaps: ${JSON.stringify(v.dataGaps)}; OpenCellID: ${JSON.stringify(v.intelligence?.opencellid ? { cells: v.intelligence.opencellid.cells.length, carriers: v.intelligence.opencellid.carriersPresent } : undefined)}`; }
 export async function POST(request: NextRequest) {
-  const body = await request.json().catch(() => null) as { question?: unknown; valuation?: ScoreResponse } | null;
-  if (!body || typeof body.question !== "string" || !body.valuation) {
-    return NextResponse.json({ ok: false, error: "question and valuation are required" }, { status: 400 });
-  }
-  const q = body.question.toLowerCase();
-  const v = body.valuation;
-  let answer = `Using the current valuation: the site score is ${v.score.final.toFixed(1)}/100, with a ${v.score.multiplier.toFixed(2)}× permitting multiplier. The benchmark is $${v.benchmark.monthlyRange.min.toLocaleString()}–$${v.benchmark.monthlyRange.max.toLocaleString()}/month.`;
-  if (q.includes("method") || q.includes("weight")) answer = "Using the current valuation methodology: baseline value is 40% Coverage Necessity, 35% Subscriber Value, and 25% Construction Cost. Permitting Friction multiplies that baseline because it changes replaceability rather than site demand.";
-  else if (q.includes("gap") || q.includes("confidence")) answer = `Using the current valuation: ${v.dataGaps.length ? `the report identifies ${v.dataGaps.length} data gap(s), so confidence is reduced where evidence is missing.` : "no scored data gaps were reported."}`;
-  else if (q.includes("negot") || q.includes("offer")) answer = `Using the current valuation: ${v.leverageSummary.join(" ")}`;
-  else if (q.includes("evidence") || q.includes("field")) answer = `Using the current valuation: the report's evidence-backed drivers are ${[...v.score.dimensions.coverageNecessity.topFields, ...v.score.dimensions.subscriberValue.topFields, ...v.score.dimensions.constructionCost.topFields].map((f) => f.fieldName).join(", ")}.`;
-  return NextResponse.json({ ok: true, answer, status: "Using current valuation" });
+  const body = await request.json().catch(() => null) as { messages?: ChatMessage[]; valuation?: ScoreResponse } | null;
+  if (!body || !Array.isArray(body.messages) || !body.messages.length || body.messages.some((m) => !m || (m.role !== "user" && m.role !== "assistant") || typeof m.content !== "string") || body.messages.at(-1)?.role !== "user" || !body.valuation) return NextResponse.json({ ok: false, error: "messages and valuation are required" }, { status: 400 });
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) return NextResponse.json({ ok: false, error: "Assistant unavailable" }, { status: 503 });
+  const contents = [{ role: "user", parts: [{ text: `Use this valuation context as authoritative context:\n${buildSystemContext(body.valuation)}` }] }, { role: "model", parts: [{ text: "Understood. I will answer using the provided valuation context." }] }, ...body.messages.map((m) => ({ role: m.role === "assistant" ? "model" : "user", parts: [{ text: m.content }] }))];
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite:generateContent?key=${apiKey}`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ contents, generationConfig: { temperature: 0.4, maxOutputTokens: 512 } }) });
+  if (!response.ok) return NextResponse.json({ ok: false, error: "Assistant unavailable" }, { status: 502 });
+  const data = await response.json();
+  return NextResponse.json({ ok: true, answer: data.candidates?.[0]?.content?.parts?.map((p: { text?: string }) => p.text ?? "").join("") ?? "Unable to answer." });
 }

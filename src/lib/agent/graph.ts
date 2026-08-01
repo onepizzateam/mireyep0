@@ -11,7 +11,8 @@ import {
 } from "./evidence";
 import { mireyeProvider, openCellIdProvider } from "./providers";
 import { MIREYE_FIELDS } from "@/constants/fields";
-import type { ScoreResponse, IntelligenceLayers } from "@/lib/types";
+import type { ScoreResponse, IntelligenceLayers, MireyeFields, SiteScore } from "@/lib/types";
+import { computeSiteScore } from "@/lib/score";
 import {
   normalizeScoreResponse,
   parseReasoningResponse,
@@ -41,6 +42,9 @@ export const SignalRentState = Annotation.Root({
     missing: string[];
   } | null>(),
   result: Annotation<ScoreResponse | null>(),
+  deterministicScore: Annotation<SiteScore | null>({ value: (_prev, next) => next, default: () => null }),
+  rawFields: Annotation<MireyeFields | null>({ value: (_prev, next) => next, default: () => null }),
+  opencellData: Annotation<any>({ value: (_prev, next) => next, default: () => null }),
   error: Annotation<string | null>(),
 });
 type State = typeof SignalRentState.State;
@@ -154,6 +158,19 @@ async function assessEvidenceNode() {
   };
   return { evidenceQuality: quality };
 }
+async function scoreNode(state: State) {
+  const fieldMap: Record<string, unknown> = {};
+  for (const item of state.evidence) {
+    if (item.provider === "mireye" && item.id.startsWith("mireye:")) {
+      const raw = item.rawData;
+      fieldMap[item.id.replace("mireye:", "")] = raw != null && typeof raw === "object" && "value" in raw ? (raw as { value: unknown }).value : raw;
+    }
+  }
+  const fields = fieldMap as unknown as MireyeFields;
+  const opencellEvidence = state.evidence.find((e) => e.provider === "opencellid");
+  const opencellData = opencellEvidence?.rawData as { cells: Array<Record<string, unknown>>; carriersPresent: string[]; error?: string } | undefined;
+  return { deterministicScore: computeSiteScore(fields, opencellData?.carriersPresent ?? []), rawFields: fields, opencellData };
+}
 function parseModelResponse(content: unknown) {
   const text = Array.isArray(content)
     ? content
@@ -201,17 +218,25 @@ function parseModelResponse(content: unknown) {
 async function reasonNode(state: State) {
   const model = new ChatGoogleGenerativeAI({
     model: "gemini-3.1-flash-lite",
-    temperature: 0,
+    temperature: 0.4,
     apiKey: process.env.GEMINI_API_KEY,
   });
   const prompt = `Location: ${state.displayAddress} (${state.resolvedLat}, ${state.resolvedLng})
 Carrier: ${state.carrier ?? "unknown"}
 Offered rate: ${state.offeredRate ?? "not provided"}
 Buyout: ${state.buyoutAmount ?? "not provided"}
+Deterministic locked score: ${JSON.stringify(state.deterministicScore)}
+Raw Mireye fields: ${JSON.stringify(state.rawFields)}
+OpenCellID data: ${JSON.stringify(state.opencellData)}
 Planner tasks: ${JSON.stringify(state.plannerOutput)}
 Executor providers: ${JSON.stringify(state.executorOutput)}
 Evidence registry: ${JSON.stringify(state.evidence, null, 2)}`;
-  const contract = `You are SignalRent's evidence-based valuation reasoner. Reason only from the evidence registry. Do not invent values, fields, providers, weights, scores, thresholds, or missing facts.
+  const contract = `You are SignalRent's evidence interpreter. The numeric scores have already been computed deterministically. Your job is ONLY to provide:
+1. leverageSummary: 3–5 plain-English negotiation insights for the landlord
+2. dataGaps: for each field listed as a gap, write a one-sentence assumption explaining what was assumed in its place
+3. benchmark.priceBreakdown: 2–4 price adjustment items grounded in the evidence
+4. reasoning: 2–3 sentence explanation of the site's key valuation drivers
+DO NOT recompute or change any numeric scores. Return them exactly as given.
 
 Return exactly one top-level JSON object matching this schema. Do NOT wrap it under any key like "result", "output", or "valuation". You may optionally wrap JSON in <output> tags and reasoning text in <reasoning> tags.
 
@@ -224,10 +249,7 @@ CRITICAL FIELD REQUIREMENTS:
 - score.dimensions.coverageNecessity.weight MUST be 0.40
 - score.dimensions.subscriberValue.weight MUST be 0.35
 - score.dimensions.constructionCost.weight MUST be 0.25
-- score.baseline = (coverageNecessity.raw * 0.40) + (subscriberValue.raw * 0.35) + (constructionCost.raw * 0.25), a number 0-100
-- score.composite = score.baseline * score.permittingFriction.multiplierRaw
-- score.final = Math.min(100, Math.max(0, score.composite))
-- score.multiplier = score.permittingFriction.multiplierRaw
+- ALL score numeric fields, topFields, permitting flags, and siteType are LOCKED — copy exactly from the deterministic locked score in the input.
 - score.siteType MUST be one of: "urban", "suburban", "rural"
 - benchmark.scoreBand MUST be one of: "high", "mid", "low"
 - benchmark.siteType MUST match score.siteType
@@ -235,7 +257,7 @@ CRITICAL FIELD REQUIREMENTS:
 - dataGaps items MUST each have: field (string), impact ("high"|"medium"|"low"), assumption (string)
 - score.dataGaps MUST be the same array as top-level dataGaps
 - leverageSummary MUST be an array of 2-5 plain-English strings
-- All numeric score values (raw, baseline, composite, final) must be realistic 0-100 values based on evidence. Do not default to 0 or 1.`;
+- If OpenCellID data is present and nearest_antenna_structure_type is known, mention whether the nearest tower is near capacity or has open capacity using the defined structure limits (GUYED 4, SELF_SUPPORTING 3, MONOPOLE 2, BUILDING 2, WATER_TOWER 1).`;
   const message = await model.invoke([
     new SystemMessage(contract),
     new HumanMessage(prompt),
@@ -286,6 +308,7 @@ async function validateNode(state: State) {
     return { error: "Valuation is impossible: the score or benchmark cannot be formatted." };
   }
   const result = validation.data as unknown as ScoreResponse;
+  const lockedScore = state.deterministicScore;
   const findings: string[] = [];
   const numbers = [result.score.baseline, result.score.multiplier, result.score.composite, result.score.final,
     result.score.dimensions.coverageNecessity.raw, result.score.dimensions.subscriberValue.raw,
@@ -307,7 +330,7 @@ async function validateNode(state: State) {
   if (!benchmarkTraceable) findings.push("WARNING: some benchmark adjustments could not be fully traced to available evidence.");
   if (!minimumEvidence) findings.push("WARNING: partial evidence was available; missing evidence lowers confidence.");
   const annotatedReasoning = [result.reasoning, ...findings].filter(Boolean).join(" ");
-  return { result: { ...result, reasoning: annotatedReasoning } };
+  return { result: { ...result, score: lockedScore ? { ...lockedScore, dataGaps: result.score.dataGaps ?? lockedScore.dataGaps } : result.score, reasoning: annotatedReasoning } };
 }
 
 export const graph = new StateGraph(SignalRentState)
@@ -316,6 +339,7 @@ export const graph = new StateGraph(SignalRentState)
   .addNode("planEvidence", plannerNode)
   .addNode("collectEvidence", collectNode)
   .addNode("assessEvidence", assessEvidenceNode)
+  .addNode("scoreFields", scoreNode)
   .addNode("reason", reasonNode)
   .addNode("validate", validateNode)
   .addEdge("__start__", "resolveLocation")
@@ -325,9 +349,8 @@ export const graph = new StateGraph(SignalRentState)
   .addEdge("discoverCapabilities", "planEvidence")
   .addEdge("planEvidence", "collectEvidence")
   .addEdge("collectEvidence", "assessEvidence")
-  .addConditionalEdges("assessEvidence", (s) =>
-    s.evidenceQuality?.enough ? "reason" : "reason",
-  )
+  .addEdge("assessEvidence", "scoreFields")
+  .addEdge("scoreFields", "reason")
   .addEdge("reason", "validate")
   .addEdge("validate", "__end__")
   .compile();

@@ -87,8 +87,8 @@ export default function FieldDisclosure({ score }: FieldDisclosureProps) {
                           {displayFieldName(field)}
                         </td>
                         <td className="py-3 px-3 text-xs text-gray-600">
-                          {field.value === null
-                            ? "—"
+                          {field.value === null || field.value === undefined
+                            ? <span className="text-gray-400 font-mono text-xs italic">missing — fallback used</span>
                             : typeof field.value === "boolean"
                               ? field.value
                                 ? "Yes"

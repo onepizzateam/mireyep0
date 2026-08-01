@@ -312,7 +312,7 @@ describe("Scoring Model", () => {
     const result = computeSiteScore(fields);
 
     const fccCaveatFound = result.dataGaps.some((gap) =>
-      gap.includes("FCC tenancy")
+      gap.field.includes("FCC tenancy")
     );
     expect(fccCaveatFound).toBe(true);
   });

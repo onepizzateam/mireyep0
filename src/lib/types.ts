@@ -102,7 +102,7 @@ export interface MireyeFields {
 // ============================================================================
 
 export type SiteType = "urban" | "suburban" | "rural";
-export interface AgentFieldGap { field: string; impact: "high" | "medium" | "low"; assumption: string; includes: (value: string) => boolean; }
+export interface AgentFieldGap { field: string; impact: "high" | "medium" | "low"; assumption: string; includes?: (value: string) => boolean; }
 export interface AgentTopField { field: string; value: string; impact: "high" | "medium" | "low"; explanation: string; }
 
 export interface FieldContribution {

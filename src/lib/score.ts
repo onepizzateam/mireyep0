@@ -39,6 +39,7 @@ import {
   FieldContribution,
 } from "./types";
 import { DIMENSION_WEIGHTS, FRICTION_MULTIPLIERS, SITE_TYPE_THRESHOLDS } from "@/constants/weights";
+import { computeTowerSaturation } from "@/lib/towerSaturation";
 
 // ============================================================================
 // Site Type Classification
@@ -97,7 +98,8 @@ function classifySiteType(fields: MireyeFields): { siteType: SiteType; dataGaps:
  * Includes elevation bonus
  */
 function scoreDimension1(
-  fields: MireyeFields
+  fields: MireyeFields,
+  opencellCarriers: string[] = [],
 ): { score: number; dataGaps: string[]; topFields: FieldContribution[] } {
   const dataGaps: string[] = [];
   const contributions: Array<{
@@ -283,6 +285,17 @@ function scoreDimension1(
       impact: "high",
       direction: "positive",
       explanation: `Elevation ${elevation}m adds ${elevationBonus} points (coverage radius advantage)`,
+    });
+  }
+
+  const saturation = computeTowerSaturation(fields.nearest_antenna_structure_type, opencellCarriers);
+  if (saturation !== null) {
+    const saturated = saturation.isSaturated;
+    dim1 = Math.max(0, Math.min(100, dim1 + (saturated ? 12 : -8)));
+    contributions.push({
+      field: "nearbyTowerSaturation", score: saturated ? 80 : 30, value: saturation.label,
+      impact: "high", direction: saturated ? "positive" : "negative",
+      explanation: saturated ? "Nearest tower is near capacity — carrier cannot easily co-locate there" : "Nearest tower has open capacity — carrier may use it as leverage",
     });
   }
 
@@ -781,7 +794,7 @@ function scorePermittingFriction(
  * Compute full site score
  * Per AGENTS.md Section 6
  */
-export function computeSiteScore(fields: MireyeFields): SiteScore {
+export function computeSiteScore(fields: MireyeFields, opencellCarriers: string[] = []): SiteScore {
   const allDataGaps: Set<string> = new Set();
 
   // Step 1: Classify site type
@@ -789,7 +802,7 @@ export function computeSiteScore(fields: MireyeFields): SiteScore {
   siteTypeGaps.forEach((g) => allDataGaps.add(g));
 
   // Step 2: Score Dimension 1 (Coverage Necessity)
-  const { score: dim1Raw, dataGaps: dim1Gaps, topFields: dim1TopFields } = scoreDimension1(fields);
+  const { score: dim1Raw, dataGaps: dim1Gaps, topFields: dim1TopFields } = scoreDimension1(fields, opencellCarriers);
   dim1Gaps.forEach((g) => allDataGaps.add(g));
 
   // Step 3: Score Dimension 2 (Subscriber Value)
@@ -854,9 +867,7 @@ export function computeSiteScore(fields: MireyeFields): SiteScore {
     dataGaps: Array.from(allDataGaps).map((field) => ({
       field,
       impact: "medium" as const,
-      assumption: "A fallback value was used because this field was unavailable.",
-      includes: (value: string) => field.includes(value),
-      toString: () => field,
+      assumption: "Field was unavailable; a neutral fallback value was used.",
     })),
   };
 

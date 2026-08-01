@@ -170,7 +170,7 @@ describe("Site Type Classification Fix", () => {
 
       const score = computeSiteScore(fields);
       expect(score.siteType).toBe("suburban");
-      expect(score.dataGaps.some((gap) => gap.includes("site_type_classification_uncertain_missing_data"))).toBe(true);
+      expect(score.dataGaps.some((gap) => gap.field.includes("site_type_classification_uncertain_missing_data"))).toBe(true);
     });
 
     test("Null density falls back to suburban with data gap marker", () => {
@@ -181,7 +181,7 @@ describe("Site Type Classification Fix", () => {
 
       const score = computeSiteScore(fields);
       expect(score.siteType).toBe("suburban");
-      expect(score.dataGaps.some((gap) => gap.includes("site_type_classification_uncertain_missing_data"))).toBe(true);
+      expect(score.dataGaps.some((gap) => gap.field.includes("site_type_classification_uncertain_missing_data"))).toBe(true);
     });
 
     test("Both null falls back to suburban with both data gap markers", () => {
@@ -192,7 +192,7 @@ describe("Site Type Classification Fix", () => {
 
       const score = computeSiteScore(fields);
       expect(score.siteType).toBe("suburban");
-      const dataGapString = score.dataGaps.join("|");
+      const dataGapString = score.dataGaps.map((gap) => gap.field).join("|");
       expect(dataGapString).toMatch(/site_type_classification_uncertain_missing_data.*nearest_urban_area_distance_m/);
       expect(dataGapString).toMatch(/site_type_classification_uncertain_missing_data.*housing_units_density_per_km2/);
     });

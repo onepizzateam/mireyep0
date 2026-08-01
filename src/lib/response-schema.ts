@@ -76,13 +76,13 @@ Return a single JSON object with this exact structure (no wrapper keys):
 
 {
   "score": {
-    "baseline": <number 0-100: weighted sum of the three dimension raw scores>,
-    "multiplier": <number: same as permittingFriction.multiplierRaw>,
-    "composite": <number: baseline * multiplier, may exceed 100>,
-    "final": <number 0-100: composite clamped to 0-100>,
+    "baseline": "LOCKED — copy exactly from deterministic input",
+    "multiplier": "LOCKED — copy exactly from deterministic input",
+    "composite": "LOCKED — copy exactly from deterministic input",
+    "final": "LOCKED — copy exactly from deterministic input",
     "dimensions": {
       "coverageNecessity": {
-        "raw": <number 0-100>,
+        "raw": "LOCKED — copy exactly from deterministic input",
         "label": "Coverage Necessity",
         "weight": 0.40,
         "topFields": [
@@ -96,21 +96,21 @@ Return a single JSON object with this exact structure (no wrapper keys):
         ]
       },
       "subscriberValue": {
-        "raw": <number 0-100>,
+        "raw": "LOCKED — copy exactly from deterministic input",
         "label": "Subscriber Value",
         "weight": 0.35,
         "topFields": [ ... same structure as above ... ]
       },
       "constructionCost": {
-        "raw": <number 0-100>,
+        "raw": "LOCKED — copy exactly from deterministic input",
         "label": "Construction Cost",
         "weight": 0.25,
         "topFields": [ ... same structure as above ... ]
       }
     },
     "permittingFriction": {
-      "multiplierRaw": <number 0.5-2.0>,
-      "flags": ["<string: plain English friction flag>", ...]
+      "multiplierRaw": "LOCKED — copy exactly from deterministic input",
+      "flags": ["LOCKED — copy exactly from deterministic input"]
     },
     "siteType": "urban" | "suburban" | "rural",
     "dataGaps": [

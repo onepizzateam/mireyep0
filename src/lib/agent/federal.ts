@@ -38,7 +38,7 @@ export async function fetchFederalLayers(lat: number, lng: number, county?: stri
   const key = process.env.OPENCELLID_API_KEY;
   try {
     if (key) {
-      const bbox = `${lat - .01},${lng - .01},${lat + .01},${lng + .01}`;
+      const bbox = `${lat - .0045},${lng - .0045},${lat + .0045},${lng + .0045}`;
       const data = await json(`https://opencellid.org/cell/getInArea?key=${encodeURIComponent(key)}&BBOX=${encodeURIComponent(bbox)}&limit=50&offset=0&format=json`);
       const cells: OpenCelliDCell[] = (data?.cells ?? []).map((c: OpenCelliDCell) => ({ ...c, carrier_name: c.carrier_name ?? `${c.mcc}-${c.mnc}` }));
       out.opencellid = { cells, carriersPresent: [...new Set(cells.map((c: OpenCelliDCell) => String(c.carrier_name ?? "")))], citations: [citation("OpenCelliD", "https://opencellid.org/")] };
