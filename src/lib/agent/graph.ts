@@ -247,7 +247,12 @@ async function assessEvidenceNode(state: State) {
   return { evidenceQuality: quality, hypotheses: testedHypotheses, gapFillResults };
 }
 async function scoreNode(state: State) {
-  const fieldMap: Record<string, unknown> = {};
+  // Dynamic planning may omit fields; represent omitted values as null so the
+  // deterministic scorer uses its intended data-gap fallbacks instead of
+  // treating undefined as a numeric value.
+  const fieldMap: Record<string, unknown> = Object.fromEntries(
+    MIREYE_FIELDS.map((field) => [field, null]),
+  );
   for (const item of state.evidence) {
     if (item.provider !== "mireye") continue;
     if (item.id.startsWith("mireye:")) {
