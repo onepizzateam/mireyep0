@@ -5,6 +5,7 @@ import { ScoreRequest } from "@/lib/types";
 
 interface AddressFormProps {
   onSubmit: (request: ScoreRequest) => void;
+  onSmokeTest?: () => void;
   isLoading: boolean;
 }
 
@@ -14,7 +15,7 @@ interface GeocodeResult {
   displayName: string;
 }
 
-export default function AddressForm({ onSubmit, isLoading }: AddressFormProps) {
+export default function AddressForm({ onSubmit, onSmokeTest, isLoading }: AddressFormProps) {
   const [address, setAddress] = useState("");
   const [carrier, setCarrier] = useState("");
   const [offeredRate, setOfferedRate] = useState("");
@@ -69,6 +70,11 @@ export default function AddressForm({ onSubmit, isLoading }: AddressFormProps) {
 
   const handleSubmit = (e: FormEvent) => {
     e.preventDefault();
+
+    if (address.trim().toUpperCase() === "NO BUENO") {
+      onSmokeTest?.();
+      return;
+    }
 
     const request: ScoreRequest = {
       address: geocodedLocation?.displayName || address,
