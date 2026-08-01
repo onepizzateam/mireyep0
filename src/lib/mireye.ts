@@ -88,30 +88,6 @@ async function fetchBatch(
       }
     }
 
-    // Detailed logging in dev mode
-    if (process.env.NODE_ENV === "development") {
-      const fieldsInResponse = Object.keys(responseFields).length;
-      const batchNum = fields === MIREYE_FIELDS_BATCH_1 ? "1" : "2";
-
-      console.log(
-        `[Mireye] Batch ${batchNum} at (${lat}, ${lng}): ${elapsedMs}ms, HTTP ${response.status}, ${fieldsInResponse} fields in response, ${valueCount} with values, ${nullCount} null`
-      );
-
-      if ("error" in rawResponse) {
-        console.log(`  ⚠️  Response has 'error' field: ${(rawResponse as MireyeResponseWithFields).error}`);
-      }
-
-      const responseFieldKeys = Object.keys(responseFields).slice(0, 10);
-      console.log(
-        `  Response field keys: ${responseFieldKeys.join(", ")}${fieldsInResponse > 10 ? "..." : ""}`
-      );
-
-      const partialFailures = (rawResponse as Record<string, unknown>).partial_failures;
-      if (Array.isArray(partialFailures) && partialFailures.length) {
-        console.log(`  ⚠️  Partial failures: ${partialFailures.map((f: Record<string, unknown>) => f.field).join(", ")}`);
-      }
-    }
-
     return unwrappedFields;
   } catch (error) {
     if (error instanceof DOMException && error.name === "AbortError") {
@@ -153,14 +129,6 @@ export async function fetchMireyeFields(
 
   // Merge both partial results into a single complete MireyeFields object
   const mergedFields = Object.assign({}, batch1Results, batch2Results);
-
-  if (process.env.NODE_ENV === "development") {
-    const totalValues = Object.values(mergedFields).filter((v) => v !== null).length;
-    const totalNulls = Object.values(mergedFields).filter((v) => v === null).length;
-    console.log(
-      `[Mireye] All batches complete at (${lat}, ${lng}) — ${totalValues} values, ${totalNulls} nulls`
-    );
-  }
 
   return mergedFields as MireyeFields;
 }

@@ -12,7 +12,6 @@ type Session = {
 };
 
 let sessionPromise: Promise<Session> | undefined;
-let authTokenCalls = 0;
 const CACHE_TTL_MS = Number(process.env.MIREYE_CACHE_TTL_MS ?? 86_400_000);
 const lookupCache = new Map<string, { expires: number; value: unknown }>();
 const resourceCache = new Map<string, { expires: number; value: unknown }>();
@@ -50,18 +49,14 @@ async function createSession(): Promise<Session> {
       },
       clientInformation: async () => undefined,
       tokens: async () => {
-        authTokenCalls += 1;
-        console.log(`Mireye MCP authProvider.tokens() called (${authTokenCalls})`);
         return {
           access_token: getBearerToken(),
           token_type: "Bearer",
         };
       },
       saveTokens: async () => {
-        console.log("Mireye MCP authProvider.saveTokens() called");
       },
       redirectToAuthorization: async (authorizationUrl) => {
-        console.log(`Mireye MCP OAuth authorization URL: ${authorizationUrl}`);
       },
       saveCodeVerifier: async () => undefined,
       codeVerifier: async () => "",
@@ -81,7 +76,6 @@ async function createSession(): Promise<Session> {
     );
 
     record("initialize"); await client.connect(transport); record("connect");
-    console.log("Mireye MCP connected and initialized");
     return { client, transport };
   } catch (error) {
     console.error("Mireye MCP session initialization failed", error instanceof Error ? error.message : String(error));

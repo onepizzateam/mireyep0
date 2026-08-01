@@ -33,7 +33,6 @@ export default function Home() {
       });
 
       const data = (await response.json()) as ScoreResponse | ScoreErrorResponse;
-      console.info("[score] client response", JSON.stringify({ httpStatus: response.status, ok: data.ok, keys: Object.keys(data), hasScore: data.ok ? Boolean(data.score) : false, hasBenchmark: data.ok ? Boolean(data.benchmark) : false }));
 
       if (!data.ok) {
         setError(data.error);
@@ -48,7 +47,6 @@ export default function Home() {
         setError("The valuation response was incomplete. Please try again.");
         } else {
           setResults(parsed.data as ScoreResponse);
-          console.info("[score] client state", JSON.stringify({ resultPresent: true, scorePresent: true, benchmarkPresent: true }));
         }
       }
     } catch (err) {

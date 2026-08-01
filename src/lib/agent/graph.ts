@@ -71,9 +71,6 @@ async function resolveNode(state: State) {
 }
 async function discoverNode() {
   const capabilities = await discover(registry);
-  console.info("[reasoning] discovery", {
-    capabilityCount: capabilities.length,
-  });
   return { capabilities };
 }
 async function plannerNode() {
@@ -97,7 +94,6 @@ async function plannerNode() {
       reason: "estimate coverage necessity and competition",
     },
   ];
-  console.info("[reasoning] planner output", plannerOutput);
   return { plannerOutput };
 }
 async function collectNode(state: State) {
@@ -145,10 +141,6 @@ async function collectNode(state: State) {
   const executorOutput = [...assignments.keys()].map(
     (provider) => provider.metadata().id,
   );
-  console.info("[reasoning] executor selection", {
-    requests: state.plannerOutput.length,
-    providers: executorOutput,
-  });
   return { evidence, executorOutput };
 }
 async function assessEvidenceNode() {
@@ -169,12 +161,6 @@ async function assessEvidenceNode() {
     confidence,
     missing,
   };
-  console.info("[reasoning] evidence quality", {
-    evidenceCount: evidence.length,
-    confidence,
-    missing,
-    enough: quality.enough,
-  });
   return { evidenceQuality: quality };
 }
 function parseModelResponse(content: unknown) {
@@ -188,11 +174,6 @@ function parseModelResponse(content: unknown) {
   const tagged = text.match(/<output>\s*([\s\S]*?)\s*<\/output>/i)?.[1];
   const fenced = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i)?.[1];
   const candidate = tagged ?? fenced ?? text.trim();
-  console.info("[reasoning] model response", {
-    textLength: text.length,
-    hasTaggedOutput: Boolean(tagged),
-    hasFencedJson: Boolean(fenced),
-  });
   if (!candidate) throw new Error("Reasoner returned empty text");
   try {
     const raw = JSON.parse(candidate);
@@ -210,12 +191,6 @@ function parseModelResponse(content: unknown) {
         `Reasoner returned invalid structured output: ${validation.error.issues.map((issue) => issue.path.join(".")).join(", ")}`,
       );
     }
-    console.info("[reasoning] parser result", {
-      structuredJson: true,
-      rawKeys: Object.keys(raw ?? {}),
-      normalizedKeys: Object.keys(normalized ?? {}),
-      unwrapped: normalized !== raw,
-    });
     return {
       parsed: validation.data,
       reasoning:
@@ -239,10 +214,6 @@ async function reasonNode(state: State) {
   const prompt = `Location: ${state.displayAddress} (${state.resolvedLat}, ${state.resolvedLng})\nCarrier: ${state.carrier ?? "unknown"}\nOffered rate: ${state.offeredRate ?? "not provided"}\nBuyout: ${state.buyoutAmount ?? "not provided"}\nPlanner tasks: ${JSON.stringify(state.plannerOutput)}\nExecutor providers: ${JSON.stringify(state.executorOutput)}\nEvidence registry: ${JSON.stringify(state.evidence, null, 2)}`;
   const contract =
     "You are SignalRent's evidence-based valuation reasoner. Reason only from the evidence registry. Do not invent values, fields, providers, weights, scores, thresholds, or missing facts. Return one top-level JSON object. Every required field must use its specified JSON type: ok boolean true; address string; displayAddress string; lat number; lng number; score object; benchmark object; leverageSummary array of strings (always a JSON array, even for one item); dataGaps array of structured gap objects; reasoning string. The score object must contain baseline number, composite number, multiplier number, final number, dimensions object, permittingFriction object, siteType string, and dataGaps array. The benchmark object must contain monthlyRange object, annualRange object, siteType string, scoreBand string, calibrationNote string, baseValue number, and priceBreakdown array of structured adjustment objects. Include explicit uncertainty in dataGaps and leverageSummary when evidence is missing. Never wrap the object under result, output, valuation, or any other key. You may optionally wrap JSON in <output> tags and reasoning text in <reasoning> tags.";
-  console.info("[reasoning] final prompt", {
-    promptLength: prompt.length,
-    evidenceCount: state.evidence.length,
-  });
   const message = await model.invoke([
     new SystemMessage(contract),
     new HumanMessage(prompt),
@@ -258,10 +229,6 @@ async function reasonNode(state: State) {
       ),
     ]);
     ({ parsed, reasoning } = parseModelResponse(repair.content));
-    console.info("[reasoning] schema repair", {
-      attempted: true,
-      hasLeverageSummary: Boolean(parsed.leverageSummary),
-    });
   }
   return {
     result: {
@@ -278,12 +245,6 @@ async function validateNode(state: State) {
     !Array.isArray(state.result?.leverageSummary) && "leverageSummary",
   ].filter(Boolean);
   const valid = missing.length === 0;
-  console.info("[reasoning] validation", {
-    valid,
-    resultPresent: Boolean(state.result),
-    resultKeys: state.result ? Object.keys(state.result) : [],
-    missing,
-  });
   if (!valid)
     return {
       error: `Reasoner returned an incomplete valuation result (missing: ${missing.join(", ")})`,
