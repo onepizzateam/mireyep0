@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
-import { beginMcpUsage, mcpTool } from "@/lib/agent/mcp";
 
 const SMOKE_LAT = 41.8789;
 const SMOKE_LNG = -87.6359;
-const SMOKE_ADDRESS = "233 S Wacker Dr, Chicago, IL 60606";
+const SMOKE_ADDRESS = "NO BUENO";
 
 export interface SmokeCheck { name: string; passed: boolean; ms: number; detail: string; error?: string; }
 export interface SmokeResult { ok: boolean; checks: SmokeCheck[]; totalMs: number; timestamp: string; }
@@ -12,18 +11,18 @@ export async function GET(): Promise<NextResponse> {
   const start = Date.now();
   const checks: SmokeCheck[] = [];
   const lookupStart = Date.now();
-  const finish = beginMcpUsage();
+  const previousMock = process.env.SIGNALRENT_MOCK_MIREYE;
+  process.env.SIGNALRENT_MOCK_MIREYE = "true";
   try {
-    const result = await mcpTool("mireye_lookup", { input: SMOKE_ADDRESS }) as any;
-    finish();
-    const unwrapped = result?.structuredContent ?? result?.data ?? result?.content ?? result;
-    const disposition = unwrapped?.disposition ?? unwrapped?.location?.disposition ?? "unknown";
-    const resolved = unwrapped?.location ?? unwrapped;
-    const hasCoords = typeof resolved?.lat === "number" && typeof resolved?.lng === "number";
-    checks.push({ name: "Mireye MCP — session + lookup", passed: disposition !== "no_match" && hasCoords, ms: Date.now() - lookupStart, detail: hasCoords ? `Resolved to (${resolved.lat}, ${resolved.lng}) — disposition: ${disposition}` : `Disposition: ${disposition} — no coords returned` });
+    const { graph } = await import("@/lib/agent/graph");
+    const state = await graph.invoke({ address: SMOKE_ADDRESS, lat: SMOKE_LAT, lng: SMOKE_LNG, resolvedLat: 0, resolvedLng: 0, displayAddress: "", evidence: [], capabilities: [], plannerOutput: [], executorOutput: [], evidenceQuality: null, result: null, deterministicScore: null, rawFields: null, opencellData: null, towerSaturationSummary: "", error: null });
+    const score = state.result?.score;
+    checks.push({ name: "Agent — full run (mock Mireye)", passed: !state.error && !!score && typeof score.baseline === "number", ms: Date.now() - lookupStart, detail: score ? `baseline: ${score.baseline.toFixed(1)}, composite: ${score.composite.toFixed(1)}, siteType: ${score.siteType}, multiplier: ${score.multiplier.toFixed(2)}×` : "score missing from result", error: state.error ?? undefined });
   } catch (e) {
-    finish();
-    checks.push({ name: "Mireye MCP — session + lookup", passed: false, ms: Date.now() - lookupStart, detail: "MCP session or lookup failed", error: e instanceof Error ? e.message : String(e) });
+    checks.push({ name: "Agent — full run (mock Mireye)", passed: false, ms: Date.now() - lookupStart, detail: "Graph threw", error: e instanceof Error ? e.message : String(e) });
+  } finally {
+    if (previousMock === undefined) delete process.env.SIGNALRENT_MOCK_MIREYE;
+    else process.env.SIGNALRENT_MOCK_MIREYE = previousMock;
   }
   const cellStart = Date.now();
   const key = process.env.OPENCELLID_API_KEY;

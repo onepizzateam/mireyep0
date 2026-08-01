@@ -11,6 +11,8 @@ import {
   type Location,
 } from "./evidence";
 import { mireyeProvider, openCellIdProvider } from "./providers";
+import { mockMireyeProvider } from "./mockMireyeProvider";
+import { MOCK_LOCATION } from "./mockMireye";
 import { computeTowerSaturation, saturationLeverageSentence } from "@/lib/towerSaturation";
 import { MIREYE_FIELDS } from "@/constants/fields";
 import type { ScoreResponse, IntelligenceLayers, MireyeFields, SiteScore } from "@/lib/types";
@@ -52,7 +54,8 @@ export const SignalRentState = Annotation.Root({
 });
 type State = typeof SignalRentState.State;
 const registry = new EvidenceRegistry();
-registry.addProvider(mireyeProvider);
+const useMock = process.env.SIGNALRENT_MOCK_MIREYE === "true";
+registry.addProvider(useMock ? mockMireyeProvider : mireyeProvider);
 registry.addProvider(openCellIdProvider);
 const unwrap = (v: any) => v?.structuredContent ?? v?.data ?? v?.content ?? v;
 const NOTABLE_ADDRESS_FACTS: Array<{ pattern: RegExp; facts: string[]; category: EvidenceCategory }> = [
@@ -71,6 +74,9 @@ const NOTABLE_ADDRESS_FACTS: Array<{ pattern: RegExp; facts: string[]; category:
 ];
 
 async function resolveNode(state: State) {
+  if (process.env.SIGNALRENT_MOCK_MIREYE === "true") {
+    return { resolvedLat: MOCK_LOCATION.lat, resolvedLng: MOCK_LOCATION.lng, displayAddress: `${state.address} ${MOCK_LOCATION.displayAddress}` };
+  }
   const response = unwrap(
     await mcpTool("mireye_lookup", {
       input:
