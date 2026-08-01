@@ -23,6 +23,6 @@ export function computeTowerSaturation(structureType: string | null | undefined,
 
 export function saturationLeverageSentence(sat: TowerSaturation): string {
   return sat.isSaturated
-    ? `The nearest tower is a ${sat.structureType} at ${Math.round(sat.saturationRatio * 100)}% structural capacity (${sat.currentTenants}/${sat.maxTenants} tenants) — it cannot absorb another carrier.`
+    ? `The nearest tower is a ${sat.structureType} at ${Math.round(sat.saturationRatio * 100)}% structural capacity (${sat.currentTenants}/${sat.maxTenants} tenants) — it is saturated and cannot absorb another carrier.`
     : `The nearest tower is a ${sat.structureType} at ${Math.round(sat.saturationRatio * 100)}% capacity (${sat.currentTenants}/${sat.maxTenants} tenants) — it has room for another carrier.`;
 }
