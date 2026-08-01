@@ -159,6 +159,12 @@ export default function Home() {
             {/* Score Card */}
             <ScoreCard score={results.score} />
 
+            {results.geocodeWarning && (
+              <div className="w-full max-w-2xl mx-auto rounded border border-yellow-400 bg-yellow-50 px-4 py-2 text-sm text-yellow-800">
+                ⚠️ {results.geocodeWarning}
+              </div>
+            )}
+
             {/* Benchmark Band */}
             <BenchmarkBand
               benchmark={results.benchmark}

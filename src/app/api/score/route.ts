@@ -26,10 +26,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   if (isMockRun) process.env.SIGNALRENT_MOCK_MIREYE = "true";
   try {
     const { graph } = await import("@/lib/agent/graph");
-    const state = await graph.invoke({ address: obj.address.trim(), lat: typeof obj.lat === "number" ? obj.lat : undefined, lng: typeof obj.lng === "number" ? obj.lng : undefined, carrier: typeof obj.carrier === "string" ? obj.carrier : undefined, offeredRate: typeof obj.offeredRate === "number" ? obj.offeredRate : undefined, buyoutAmount: typeof obj.buyoutAmount === "number" ? obj.buyoutAmount : undefined, resolvedLat: 0, resolvedLng: 0, displayAddress: "", evidence: [], capabilities: [], plannerOutput: [], executorOutput: [], evidenceQuality: null, result: null, error: null });
+    const state = await graph.invoke({ address: obj.address.trim(), lat: typeof obj.lat === "number" ? obj.lat : undefined, lng: typeof obj.lng === "number" ? obj.lng : undefined, carrier: typeof obj.carrier === "string" ? obj.carrier : undefined, offeredRate: typeof obj.offeredRate === "number" ? obj.offeredRate : undefined, buyoutAmount: typeof obj.buyoutAmount === "number" ? obj.buyoutAmount : undefined, resolvedLat: 0, resolvedLng: 0, displayAddress: "", evidence: [], capabilities: [], plannerOutput: [], executorOutput: [], evidenceQuality: null, result: null, error: null, geocodeWarning: null });
     finishMcpUsage();
     if (state.error) return NextResponse.json({ ok: false, error: state.error, code: "AGENT_ERROR" }, { status: 200 });
-    const payload = { ...state.result, address: obj.address.trim(), displayAddress: state.displayAddress, lat: state.resolvedLat, lng: state.resolvedLng, carrier: typeof obj.carrier === "string" ? obj.carrier : undefined, processingMs: Date.now() - startTime, ok: true as const };
+    const payload = { ...state.result, address: obj.address.trim(), displayAddress: state.displayAddress, lat: state.resolvedLat, lng: state.resolvedLng, carrier: typeof obj.carrier === "string" ? obj.carrier : undefined, geocodeWarning: state.geocodeWarning, processingMs: Date.now() - startTime, ok: true as const };
     const responseValidation = parseScoreResponse(payload);
     if (!responseValidation.success) return NextResponse.json({ ok: false, error: "Agent returned an invalid valuation response.", code: "AGENT_CONTRACT" }, { status: 500 });
     return NextResponse.json(payload, { status: 200 });

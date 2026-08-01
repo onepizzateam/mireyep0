@@ -211,6 +211,7 @@ export interface ScoreResponse {
   ok: true;
   address: string;
   displayAddress: string; // from Nominatim
+  geocodeWarning?: string | null;
   lat: number;
   lng: number;
   carrier?: string;

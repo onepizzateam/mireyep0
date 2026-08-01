@@ -51,6 +51,7 @@ export const SignalRentState = Annotation.Root({
   opencellData: Annotation<any>({ value: (_prev, next) => next, default: () => null }),
   towerSaturationSummary: Annotation<string>({ value: (_prev, next) => next, default: () => "" }),
   error: Annotation<string | null>(),
+  geocodeWarning: Annotation<string | null>({ value: (_prev, next) => next, default: () => null }),
 });
 type State = typeof SignalRentState.State;
 const registry = new EvidenceRegistry();
@@ -77,14 +78,37 @@ async function resolveNode(state: State) {
   if (process.env.SIGNALRENT_MOCK_MIREYE === "true") {
     return { resolvedLat: MOCK_LOCATION.lat, resolvedLng: MOCK_LOCATION.lng, displayAddress: MOCK_LOCATION.displayAddress };
   }
-  const response = unwrap(
-    await mcpTool("mireye_lookup", {
-      input:
-        state.lat !== undefined && state.lng !== undefined
-          ? `${state.lat},${state.lng}`
-          : state.address,
-    }),
-  );
+  let response: any;
+  let geocodeWarning: string | null = null;
+
+  try {
+    response = unwrap(
+      await mcpTool("mireye_lookup", {
+        input:
+          state.lat !== undefined && state.lng !== undefined
+            ? `${state.lat},${state.lng}`
+            : state.address,
+      }),
+    );
+  } catch (error) {
+    const raw = error instanceof Error ? error.message : String(error);
+    let parsed: any = null;
+    try {
+      const jsonMatch = raw.match(/\{[\s\S]*\}/);
+      if (jsonMatch) parsed = JSON.parse(jsonMatch[0]);
+    } catch { /* not JSON */ }
+
+    if (parsed?.code === "address_too_coarse") {
+      const confidence = parsed.confidence ?? "unknown";
+      geocodeWarning = `Address matched with low confidence (${confidence}) — data may reflect a nearby point rather than the exact address entered.`;
+      response = parsed.location ?? parsed.partial ?? null;
+      if (!response) {
+        return { error: `Address could not be resolved with sufficient confidence (score: ${confidence}). Try a nearby intersection, city name, or add a ZIP code.` };
+      }
+    } else {
+      throw error;
+    }
+  }
   if (response?.disposition === "clarify")
     return {
       error: `Address is ambiguous: ${(response.candidates ?? []).map((c: any) => c.label).join(" or ")}`,
@@ -96,6 +120,7 @@ async function resolveNode(state: State) {
     resolvedLat: Number(location.lat),
     resolvedLng: Number(location.lng),
     displayAddress: location.displayAddress ?? location.label ?? state.address,
+    geocodeWarning,
   };
 }
 async function enrichLocationNode(state: State) {
