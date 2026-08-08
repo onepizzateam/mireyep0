@@ -4,12 +4,75 @@ import { UnauthorizedError } from "@modelcontextprotocol/sdk/client/auth.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 
 const MIREYE_MCP = "https://api.mireye.com/mcp";
+const MIREYE_TOKEN_ENDPOINT = "https://api.mireye.com/token";
 const REQUEST_TIMEOUT = 120_000;
+const TOKEN_EXPIRY_BUFFER_MS = 5 * 60 * 1000; // refresh 5 mins before expiry
 
 type Session = {
   client: Client;
   transport: StreamableHTTPClientTransport;
 };
+
+// --- Token cache ---
+let cachedAccessToken: string | undefined;
+let tokenExpiresAt = 0;
+
+async function getAccessToken(): Promise<string> {
+  if (cachedAccessToken && Date.now() < tokenExpiresAt - TOKEN_EXPIRY_BUFFER_MS) {
+    return cachedAccessToken;
+  }
+
+  const clientId = process.env.MIREYE_CLIENT_ID;
+  const refreshToken = process.env.MIREYE_REFRESH_TOKEN;
+
+  if (!clientId || !refreshToken) {
+    throw new Error("Mireye token refresh failed: MIREYE_CLIENT_ID and MIREYE_REFRESH_TOKEN must be set");
+  }
+
+  const body = new URLSearchParams({
+    grant_type: "refresh_token",
+    client_id: clientId,
+    refresh_token: refreshToken,
+  });
+
+  const response = await fetch(MIREYE_TOKEN_ENDPOINT, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      "Accept": "application/json",
+    },
+    body: body.toString(),
+  });
+
+  if (!response.ok) {
+    const detail = await response.text();
+    throw new Error(`Mireye token refresh failed with HTTP ${response.status}: ${detail}`);
+  }
+
+  const data = await response.json() as {
+    access_token?: string;
+    expires_in?: number;
+    error?: string;
+    error_description?: string;
+  };
+
+  if (data.error) {
+    throw new Error(`Mireye token refresh error: ${data.error}: ${data.error_description ?? ""}`);
+  }
+
+  if (!data.access_token) {
+    throw new Error("Mireye token refresh response missing access_token");
+  }
+
+  cachedAccessToken = data.access_token;
+  // Default to 55 min if expires_in not provided (most OAuth servers give 3600s)
+  const expiresIn = data.expires_in ?? 3300;
+  tokenExpiresAt = Date.now() + expiresIn * 1000;
+
+  return cachedAccessToken;
+}
+
+// --- rest of file unchanged ---
 
 let sessionPromise: Promise<Session> | undefined;
 const CACHE_TTL_MS = Number(process.env.MIREYE_CACHE_TTL_MS ?? 86_400_000);
@@ -21,22 +84,13 @@ let activeUsage: McpUsage | undefined;
 function record(kind: keyof McpUsage) { if (activeUsage) { activeUsage[kind] += 1; activeUsage.total += 1; } }
 export function beginMcpUsage() { activeUsage = emptyUsage(); return () => { const result = activeUsage ?? emptyUsage(); activeUsage = undefined; return result; }; }
 
-function getBearerToken() {
-  const token = process.env.MIREYE_MCP_ACCESS_TOKEN
-    ?? process.env.MIREYE_BEARER_TOKEN
-    ?? process.env.MIREYE_API_TOKEN
-    ?? process.env.MIREYE_API_KEY;
-  if (!token) throw new Error("Mireye bearer token missing (set MIREYE_MCP_ACCESS_TOKEN or MIREYE_API_TOKEN)");
-  return token;
-}
-
 function isAuthenticationError(error: unknown) {
   const message = error instanceof Error ? error.message : String(error);
   return /401|unauthorized|authentication/i.test(message);
 }
 
 function shouldRetry(error: unknown) {
-  if (error instanceof Error && error.message.startsWith("Mireye bearer token missing")) return false;
+  if (error instanceof Error && error.message.startsWith("Mireye token refresh failed")) return false;
   const message = error instanceof Error ? error.message : String(error);
   return !/credits_exhausted|quota|rate.?limit|validation|invalid|unauthorized|authentication|\b401\b|\b403\b/i.test(message);
 }
@@ -50,21 +104,15 @@ async function createSession(): Promise<Session> {
         token_endpoint_auth_method: "none",
         grant_types: ["client_credentials"],
       },
-      // The access token is provisioned out-of-band in Vercel. Returning
-      // stable client information prevents the SDK from attempting OAuth
-      // dynamic registration, which requires a writable client store that a
-      // serverless function does not have.
-      clientInformation: async () => ({ client_id: "signalrent" }),
+      clientInformation: async () => ({ client_id: process.env.MIREYE_CLIENT_ID ?? "signalrent" }),
       tokens: async () => {
         return {
-          access_token: getBearerToken(),
+          access_token: await getAccessToken(),
           token_type: "Bearer",
         };
       },
-      saveTokens: async () => {
-      },
-      redirectToAuthorization: async (authorizationUrl) => {
-      },
+      saveTokens: async () => {},
+      redirectToAuthorization: async (_authorizationUrl) => {},
       saveCodeVerifier: async () => undefined,
       codeVerifier: async () => "",
     };
@@ -108,6 +156,9 @@ async function getSession() {
 
 async function reconnect() {
   record("reconnects");
+  // Also clear token cache on reconnect so a fresh token is fetched
+  cachedAccessToken = undefined;
+  tokenExpiresAt = 0;
   const current = sessionPromise;
   sessionPromise = undefined;
   if (current) {
@@ -161,9 +212,9 @@ export async function mcpTool(tool: string, args: Record<string, unknown>): Prom
       const value = decodeToolResult(result); if (cacheKey) lookupCache.set(cacheKey, { expires: Date.now() + CACHE_TTL_MS, value }); return value as never;
     } catch (error) {
       console.error(`Mireye MCP tool ${tool} request failed`, error instanceof Error ? error.message : String(error));
-    if (error instanceof UnauthorizedError) {
-      console.warn(`Mireye MCP UnauthorizedError: ${error.message}`);
-    }
+      if (error instanceof UnauthorizedError) {
+        console.warn(`Mireye MCP UnauthorizedError: ${error.message}`);
+      }
       if (attempt === 0 && shouldRetry(error)) {
         record("retries");
         await reconnect();
