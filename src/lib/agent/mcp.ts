@@ -2,16 +2,19 @@ import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import type { OAuthClientProvider } from "@modelcontextprotocol/sdk/client/auth.js";
 import { UnauthorizedError } from "@modelcontextprotocol/sdk/client/auth.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
+import { Redis } from "@upstash/redis";
 
 const MIREYE_MCP = "https://api.mireye.com/mcp";
 const MIREYE_TOKEN_ENDPOINT = "https://api.mireye.com/token";
 const REQUEST_TIMEOUT = 120_000;
-const TOKEN_EXPIRY_BUFFER_MS = 5 * 60 * 1000; // refresh 5 mins before expiry
+const TOKEN_EXPIRY_BUFFER_MS = 5 * 60 * 1000;
 
 type Session = {
   client: Client;
   transport: StreamableHTTPClientTransport;
 };
+
+const redis = Redis.fromEnv();
 
 // --- Token cache ---
 let cachedAccessToken: string | undefined;
@@ -23,7 +26,8 @@ async function getAccessToken(): Promise<string> {
   }
 
   const clientId = process.env.MIREYE_CLIENT_ID;
-  const refreshToken = process.env.MIREYE_REFRESH_TOKEN;
+  const refreshToken = (await redis.get<string>("mireye:refresh_token"))
+    ?? process.env.MIREYE_REFRESH_TOKEN;
 
   if (!clientId || !refreshToken) {
     throw new Error("Mireye token refresh failed: MIREYE_CLIENT_ID and MIREYE_REFRESH_TOKEN must be set");
@@ -51,6 +55,7 @@ async function getAccessToken(): Promise<string> {
 
   const data = await response.json() as {
     access_token?: string;
+    refresh_token?: string;
     expires_in?: number;
     error?: string;
     error_description?: string;
@@ -64,15 +69,17 @@ async function getAccessToken(): Promise<string> {
     throw new Error("Mireye token refresh response missing access_token");
   }
 
+  // Persist rotated refresh token if provided
+  if (data.refresh_token) {
+    await redis.set("mireye:refresh_token", data.refresh_token);
+  }
+
   cachedAccessToken = data.access_token;
-  // Default to 55 min if expires_in not provided (most OAuth servers give 3600s)
   const expiresIn = data.expires_in ?? 3300;
   tokenExpiresAt = Date.now() + expiresIn * 1000;
 
   return cachedAccessToken;
 }
-
-// --- rest of file unchanged ---
 
 let sessionPromise: Promise<Session> | undefined;
 const CACHE_TTL_MS = Number(process.env.MIREYE_CACHE_TTL_MS ?? 86_400_000);
@@ -111,7 +118,12 @@ async function createSession(): Promise<Session> {
           token_type: "Bearer",
         };
       },
-      saveTokens: async () => {},
+      saveTokens: async (tokens) => {
+        if (tokens.refresh_token) {
+          await redis.set("mireye:refresh_token", tokens.refresh_token);
+          cachedAccessToken = undefined;
+        }
+      },
       redirectToAuthorization: async (_authorizationUrl) => {},
       saveCodeVerifier: async () => undefined,
       codeVerifier: async () => "",
@@ -156,7 +168,6 @@ async function getSession() {
 
 async function reconnect() {
   record("reconnects");
-  // Also clear token cache on reconnect so a fresh token is fetched
   cachedAccessToken = undefined;
   tokenExpiresAt = 0;
   const current = sessionPromise;
